@@ -13,6 +13,9 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 #[derive(Debug, Snafu)]
 pub enum Error {}
 
+/// Shorthand type for results with this crate's error type.
+pub type Result<V, E = Error> = std::result::Result<V, E>;
+
 /// Configuration options for starting a `Notion` server instance.
 #[derive(Debug, Clone)]
 pub struct NotionBuilder {
@@ -50,6 +53,12 @@ impl Notion {
     /// Create a builder for a `Notion` server.
     pub fn builder() -> NotionBuilder {
         NotionBuilder::default()
+    }
+
+    /// Start the simulation server and wait for it to finish.
+    pub fn run(&self) -> Result<()> {
+        // TODO: Fill this part in
+        Ok(())
     }
 }
 
