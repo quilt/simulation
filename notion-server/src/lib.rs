@@ -1,19 +1,33 @@
-//! `notion-server` (roughly pronounced twaal) is a server that simulates Ethereum
-//! 2.0's second phase, with a particular focus on evaluating execution
-//! environments.
+//! `notion-server` is a server that simulates Ethereum 2.0's second phase, with
+//! a particular focus on evaluating execution environments.
 
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
 mod ethereum;
 
-use snafu::Snafu;
+mod error {
+    use super::*;
+
+    /// Errors arising from the simulation or from underlying OS errors.
+    #[derive(Debug, Snafu)]
+    #[snafu(visibility = "pub(crate)")]
+    pub enum Error {
+        /// Errors returned by the simulation.
+        Ethereum {
+            /// The underlying error as returned by the simulation.
+            source: ethereum::Error,
+        },
+    }
+}
+
+use crate::ethereum::Simulation;
+
+pub use self::error::Error;
+
+use snafu::{ResultExt, Snafu};
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-/// Errors arising from the simulation or from underlying OS errors.
-#[derive(Debug, Snafu)]
-pub enum Error {}
 
 /// Shorthand type for results with this crate's error type.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
@@ -59,7 +73,12 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
+        let eth = Simulation::spawn().context(error::Ethereum)?;
+
         // TODO: Fill this part in
+
+        eth.join().context(error::Ethereum)?;
+
         Ok(())
     }
 }

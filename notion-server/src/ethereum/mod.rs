@@ -1,7 +1,140 @@
+#![allow(dead_code)] // TODO: Remove as the rest of the daemon takes shape.
+
+use snafu::{Backtrace, ResultExt, Snafu};
+
 use std::collections::HashMap;
+use std::sync::mpsc::{self, Receiver, Sender, SyncSender};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread::{self, JoinHandle};
+
+/// Shorthand for result types returned from the Simulation simulation.
+pub type Result<V, E = Error> = std::result::Result<V, E>;
+
+/// Errors arising from the simulation.
+#[derive(Debug, Snafu)]
+pub enum Error {
+    /// An input/output error, usually reported by the operating system.
+    Io {
+        /// Location of where the error occurred.
+        backtrace: Backtrace,
+
+        /// The underlying error as reported by the operating system.
+        source: std::io::Error,
+    },
+
+    /// Attempted to join a simulation that isn't running.
+    NotRunning,
+}
 
 #[derive(Debug)]
-pub struct EthereumSimulation {
+enum Status {
+    Stopped,
+    Started(JoinHandle<Result<()>>),
+}
+
+impl Status {
+    pub fn is_started(&self) -> bool {
+        match self {
+            Status::Started(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Operation {
+    CreateExecutionEnvironment(args::CreateExecutionEnvironment, SyncSender<EeIndex>),
+    CreateShardChain(args::CreateShardChain, SyncSender<u32>),
+    CreateShardBlock(args::CreateShardBlock, SyncSender<u32>),
+    GetShardBlock(args::GetShardBlock, SyncSender<ShardBlock>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Simulation {
+    status: Arc<Mutex<Status>>,
+    sender: Sender<Operation>,
+}
+
+impl Simulation {
+    pub fn spawn() -> Result<Self> {
+        let (op_send, op_recv) = mpsc::channel::<Operation>();
+
+        let handle = thread::Builder::new()
+            .name("ethereum".into())
+            .spawn(move || Simulation::run(op_recv))
+            .context(Io)?;
+
+        let eth = Simulation {
+            status: Arc::new(Mutex::new(Status::Started(handle))),
+            sender: op_send,
+        };
+
+        Ok(eth)
+    }
+
+    fn status(&self) -> MutexGuard<Status> {
+        self.status.lock().expect("ethereum status poisoned")
+    }
+
+    fn run(recv: Receiver<Operation>) -> Result<()> {
+        let mut implementation = EthereumSimulation::new();
+
+        while let Ok(op) = recv.recv() {
+            match op {
+                Operation::CreateExecutionEnvironment(args, reply) => {
+                    let res = implementation.create_execution_environment(args);
+                    reply.send(EeIndex(res)).ok();
+                }
+                Operation::CreateShardBlock(args, reply) => {
+                    let res = implementation.create_shard_block(args);
+                    reply.send(res).ok();
+                }
+                Operation::CreateShardChain(args, reply) => {
+                    let res = implementation.create_shard_chain(args);
+                    reply.send(res).ok();
+                }
+                Operation::GetShardBlock(args, reply) => {
+                    let res = implementation.get_shard_block(args);
+                    reply.send(res).ok();
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn create_execution_environment(&self, args: args::CreateExecutionEnvironment) -> EeIndex {
+        let (reply_send, reply_recv) = mpsc::sync_channel(1);
+
+        self.sender
+            .send(Operation::CreateExecutionEnvironment(args, reply_send))
+            .unwrap();
+
+        reply_recv.recv().unwrap()
+    }
+
+    pub fn join(self) -> Result<()> {
+        let handle = {
+            let mut status = self.status();
+            if !status.is_started() {
+                return Err(Error::NotRunning);
+            }
+
+            let old = std::mem::replace(&mut *status, Status::Stopped);
+
+            match old {
+                Status::Started(handle) => handle,
+                _ => unreachable!(),
+            }
+        };
+
+        drop(self);
+        handle.join().expect("simulation thread panicked")
+    }
+}
+
+#[derive(Debug)]
+struct EthereumSimulation {
     beacon_chain: BeaconChain,
     shard_chains: Vec<ShardChain>,
 }
@@ -31,19 +164,19 @@ impl EthereumSimulation {
 
     /// Returns the index of the newly added shard chain
     /// Longer-term, can accept a config here
-    pub fn create_shard_chain(&mut self, sc_args: args::CreateShardChain) -> u32 {
+    pub fn create_shard_chain(&mut self, _: args::CreateShardChain) -> u32 {
         let shard_chain = ShardChain::new();
         self.shard_chains.push(shard_chain);
         (self.shard_chains.len() - 1) as u32
     }
 
+    pub fn get_shard_block(&self, _block_args: args::GetShardBlock) -> ShardBlock {
+        unimplemented!()
+    }
+
     /// Creates a new shard block and returns the
     /// index of the created shard block
-    pub fn create_shard_block(
-        &mut self,
-        shard_index: u32,
-        block_args: args::CreateShardBlock,
-    ) -> u32 {
+    pub fn create_shard_block(&mut self, _block_args: args::CreateShardBlock) -> u32 {
         // Worth noting that in a real-world use case "sub-transactions" may be merged
         // into one "combined" transaction before being executed / committed to a block
         //        let &mut shard_chain = &mut self.shard_chains[shard_index];
@@ -90,7 +223,15 @@ pub mod args {
     pub struct CreateShardChain {}
 
     #[derive(Debug, Default)]
-    pub struct CreateShardBlock {}
+    pub struct CreateShardBlock {
+        shard_index: u32,
+    }
+
+    #[derive(Debug, Default)]
+    pub struct GetShardBlock {
+        shard_index: u32,
+        block_number: u32,
+    }
 }
 
 #[derive(Debug, Default)]
@@ -134,7 +275,7 @@ impl ShardChain {
 }
 
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
-struct EeIndex(u32);
+pub struct EeIndex(u32);
 
 // The execution environment data that lives on the beacon chain
 // Does NOT include shard-specific EE state
@@ -174,6 +315,12 @@ mod test {
     use super::*;
     #[test]
     fn basics() {
-        let eth_magic = EthMagicManager::new();
+        EthereumSimulation::new();
+    }
+
+    #[test]
+    fn start_join() {
+        let eth = Simulation::spawn().unwrap();
+        eth.join().unwrap();
     }
 }
