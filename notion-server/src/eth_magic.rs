@@ -1,42 +1,51 @@
 use std::default;
 use std::collections::{HashMap};
 
-const NUM_SHARDS: usize = 32;
-
 #[derive(Debug)]
 pub struct EthMagicManager {
     beacon_chain: BeaconChain,
-    shard_chains: [ShardChain; NUM_SHARDS],
+    shard_chains: Vec<ShardChain>,
 }
 
 impl EthMagicManager {
     pub fn new() -> Self {
         Self {
             beacon_chain: BeaconChain::new(),
-            shard_chains: Default::default(),
+            shard_chains: Vec::new(),
         }
     }
 
     // Creates a new execution environment on the BeaconChain and returns the
     // index of the created execution environment
-    pub fn add_new_execution_environment(&self, ee: CreateEeArgs) -> u32 {
-        // Create EE
-        // Longer-term, accept a config here
-        unimplemented!()
+    pub fn add_new_execution_environment(&mut self, ee: CreateEeArgs) -> u32 {
+        let execution_environment = ExecutionEnvironment {
+            wasm_code: ee.wasm_code,
+        };
+        self.beacon_chain.execution_environments.push(execution_environment);
+        (self.beacon_chain.execution_environments.len() - 1) as u32
     }
 
     // Returns the index of the newly added shard chain
-    pub fn add_new_shard_chain(&self, sc: CreateShardChainArgs) -> u32 {
-        // Create new shard chain
-        // Longer-term, accept a config here
-        unimplemented!()
+    // Longer-term, can accept a config here
+    pub fn add_new_shard_chain(&mut self) -> u32 {
+        let shard_chain = ShardChain::new();
+        self.shard_chains.push(shard_chain);
+        (self.shard_chains.len() - 1) as u32
     }
 
-    pub fn append_shard_block(&self, shard_index: usize, block: CreateShardBlockArgs) {
+    // Returns the index of the newly added shard block
+    pub fn append_shard_block(&mut self, shard_index: usize, block: CreateShardBlockArgs) -> u32 {
         // Worth noting that in a real-world use case "sub-transactions" may be merged
         // into one "combined" transaction before being executed / committed to a block
+//        let &mut shard_chain = &mut self.shard_chains[shard_index];
+//
+//        // Sam to implement: create the transactions and the shard block and run the transactions
+//        let shard_block = ShardBlock::new(Vec::new());
+//
+//        shard_chain.shard_blocks.push(shard_block);
+//        (shard_chain.shard_blocks.len() - 1) as u32
 
-        unimplemented!()
+        unimplemented!();
 
 //        let transactions = block.transactions
 //
@@ -62,12 +71,7 @@ impl EthMagicManager {
 
 #[derive(Debug, Default)]
 pub struct CreateEeArgs {
-
-}
-
-#[derive(Debug, Default)]
-pub struct CreateShardChainArgs {
-
+    wasm_code: Vec<u8>,
 }
 
 #[derive(Debug, Default)]
