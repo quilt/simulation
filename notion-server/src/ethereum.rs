@@ -17,11 +17,16 @@ impl EthereumSimulation {
 
     /// Creates a new execution environment on the BeaconChain and returns the
     /// index of the created execution environment
-    pub fn create_execution_environment(&mut self, ee_args: args::CreateExecutionEnvironment) -> u32 {
+    pub fn create_execution_environment(
+        &mut self,
+        ee_args: args::CreateExecutionEnvironment,
+    ) -> u32 {
         let execution_environment = ExecutionEnvironment {
             wasm_code: ee_args.wasm_code,
         };
-        let EeIndex(ee_index) = self.beacon_chain.add_execution_environment(execution_environment);
+        let EeIndex(ee_index) = self
+            .beacon_chain
+            .add_execution_environment(execution_environment);
         ee_index
     }
 
@@ -35,7 +40,11 @@ impl EthereumSimulation {
 
     /// Creates a new shard block and returns the
     /// index of the created shard block
-    pub fn create_shard_block(&mut self, shard_index: u32, block_args: args::CreateShardBlock) -> u32 {
+    pub fn create_shard_block(
+        &mut self,
+        shard_index: u32,
+        block_args: args::CreateShardBlock,
+    ) -> u32 {
         // Worth noting that in a real-world use case "sub-transactions" may be merged
         // into one "combined" transaction before being executed / committed to a block
         //        let &mut shard_chain = &mut self.shard_chains[shard_index];
@@ -83,9 +92,7 @@ pub mod args {
 
     #[derive(Debug, Default)]
     pub struct CreateShardBlock {}
-
 }
-
 
 #[derive(Debug, Default)]
 struct BeaconChain {
