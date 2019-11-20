@@ -1,5 +1,8 @@
+use base64::decode;
 use std::default;
 use std::collections::{HashMap};
+use rocket_contrib::json::Json;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct EthMagicManager {
@@ -18,8 +21,9 @@ impl EthMagicManager {
     // Creates a new execution environment on the BeaconChain and returns the
     // index of the created execution environment
     pub fn add_new_execution_environment(&mut self, ee: CreateEeArgs) -> u32 {
+        let wasm_code = decode(&ee.base64_wasm_code).unwrap();
         let execution_environment = ExecutionEnvironment {
-            wasm_code: ee.wasm_code,
+            wasm_code,
         };
         self.beacon_chain.execution_environments.push(execution_environment);
         (self.beacon_chain.execution_environments.len() - 1) as u32
@@ -69,12 +73,12 @@ impl EthMagicManager {
     */
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct CreateEeArgs {
-    wasm_code: Vec<u8>,
+    base64_wasm_code: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct CreateShardBlockArgs {
 
 }

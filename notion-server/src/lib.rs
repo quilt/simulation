@@ -5,7 +5,7 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-mod eth_magic;
+pub mod eth_magic;
 
 use snafu::Snafu;
 
