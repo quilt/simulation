@@ -5,6 +5,8 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
+mod ethereum;
+
 use snafu::Snafu;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
