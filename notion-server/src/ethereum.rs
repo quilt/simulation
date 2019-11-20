@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::default;
 
 #[derive(Debug)]
 pub struct EthereumSimulation {
@@ -102,9 +101,9 @@ struct BeaconChain {
 
 impl BeaconChain {
     fn new() -> Self {
-        return Self {
+        Self {
             execution_environments: Vec::new(),
-        };
+        }
     }
 
     // Adds a new execution environment, returns the index of that new EE
