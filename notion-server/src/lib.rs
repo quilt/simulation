@@ -5,7 +5,7 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-mod eth_magic;
+mod ethereum;
 
 use snafu::Snafu;
 

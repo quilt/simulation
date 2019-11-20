@@ -1,13 +1,13 @@
+use std::collections::HashMap;
 use std::default;
-use std::collections::{HashMap};
 
 #[derive(Debug)]
-pub struct EthMagicManager {
+pub struct EthereumSimulation {
     beacon_chain: BeaconChain,
     shard_chains: Vec<ShardChain>,
 }
 
-impl EthMagicManager {
+impl EthereumSimulation {
     pub fn new() -> Self {
         Self {
             beacon_chain: BeaconChain::new(),
@@ -15,50 +15,50 @@ impl EthMagicManager {
         }
     }
 
-    // Creates a new execution environment on the BeaconChain and returns the
-    // index of the created execution environment
-    pub fn add_new_execution_environment(&mut self, ee: CreateEeArgs) -> u32 {
+    /// Creates a new execution environment on the BeaconChain and returns the
+    /// index of the created execution environment
+    pub fn create_execution_environment(&mut self, ee_args: args::CreateExecutionEnvironment) -> u32 {
         let execution_environment = ExecutionEnvironment {
-            wasm_code: ee.wasm_code,
+            wasm_code: ee_args.wasm_code,
         };
-        self.beacon_chain.execution_environments.push(execution_environment);
-        (self.beacon_chain.execution_environments.len() - 1) as u32
+        let EeIndex(ee_index) = self.beacon_chain.add_execution_environment(execution_environment);
+        ee_index
     }
 
-    // Returns the index of the newly added shard chain
-    // Longer-term, can accept a config here
-    pub fn add_new_shard_chain(&mut self) -> u32 {
+    /// Returns the index of the newly added shard chain
+    /// Longer-term, can accept a config here
+    pub fn create_shard_chain(&mut self, sc_args: args::CreateShardChain) -> u32 {
         let shard_chain = ShardChain::new();
         self.shard_chains.push(shard_chain);
         (self.shard_chains.len() - 1) as u32
     }
 
-    // Returns the index of the newly added shard block
-    pub fn append_shard_block(&mut self, shard_index: usize, block: CreateShardBlockArgs) -> u32 {
+    /// Creates a new shard block and returns the
+    /// index of the created shard block
+    pub fn create_shard_block(&mut self, shard_index: u32, block_args: args::CreateShardBlock) -> u32 {
         // Worth noting that in a real-world use case "sub-transactions" may be merged
         // into one "combined" transaction before being executed / committed to a block
-//        let &mut shard_chain = &mut self.shard_chains[shard_index];
-//
-//        // Sam to implement: create the transactions and the shard block and run the transactions
-//        let shard_block = ShardBlock::new(Vec::new());
-//
-//        shard_chain.shard_blocks.push(shard_block);
-//        (shard_chain.shard_blocks.len() - 1) as u32
+        //        let &mut shard_chain = &mut self.shard_chains[shard_index];
+        //
+        //        // Sam to implement: create the transactions and the shard block and run the transactions
+        //        let shard_block = ShardBlock::new(Vec::new());
+        //
+        //        shard_chain.shard_blocks.push(shard_block);
+        //        (shard_chain.shard_blocks.len() - 1) as u32
 
         unimplemented!();
 
-//        let transactions = block.transactions
-//
-//        for transaction in block.transactions {
-//            // This executes everything and presumably also updates the EE State on the shard
-//            let ee = transaction.execution_environment;
-//            let input_data = transaction.data;
-//
-//            let code = self.beacon_chain.get(ee);
-//            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
-//            runtime.execute(input_data);
-//        }
-
+        //        let transactions = block.transactions
+        //
+        //        for transaction in block.transactions {
+        //            // This executes everything and presumably also updates the EE State on the shard
+        //            let ee = transaction.execution_environment;
+        //            let input_data = transaction.data;
+        //
+        //            let code = self.beacon_chain.get(ee);
+        //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
+        //            runtime.execute(input_data);
+        //        }
     }
 
     /* Getter methods still needed
@@ -69,13 +69,20 @@ impl EthMagicManager {
     */
 }
 
-#[derive(Debug, Default)]
-pub struct CreateEeArgs {
-    wasm_code: Vec<u8>,
-}
+pub mod args {
+    #[derive(Debug, Default)]
+    pub struct CreateExecutionEnvironment {
+        // TODO @gregt: switch this to be base64 encoded in the next diff
+        // Also add conversion function using From to go from this to an internal EE representation (and same for structs below)
+        // (not adding here to avoid huge PRs with too many purposes)
+        pub wasm_code: Vec<u8>,
+    }
 
-#[derive(Debug, Default)]
-pub struct CreateShardBlockArgs {
+    #[derive(Debug, Default)]
+    pub struct CreateShardChain {}
+
+    #[derive(Debug, Default)]
+    pub struct CreateShardBlock {}
 
 }
 
@@ -94,7 +101,10 @@ impl BeaconChain {
     }
 
     // Adds a new execution environment, returns the index of that new EE
-    fn add_execution_environment(&mut self, execution_environment: ExecutionEnvironment) -> EeIndex {
+    fn add_execution_environment(
+        &mut self,
+        execution_environment: ExecutionEnvironment,
+    ) -> EeIndex {
         self.execution_environments.push(execution_environment);
         EeIndex((self.execution_environments.len() - 1) as u32)
     }
@@ -140,9 +150,7 @@ struct ShardBlock {
 
 impl ShardBlock {
     fn new(transactions: Vec<ShardTransaction>) -> Self {
-        Self {
-            transactions,
-        }
+        Self { transactions }
     }
     fn add_transaction(&mut self, transaction: ShardTransaction) {
         self.transactions.push(transaction);
