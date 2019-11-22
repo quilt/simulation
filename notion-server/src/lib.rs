@@ -7,13 +7,38 @@
 
 mod ethereum;
 
-use snafu::Snafu;
+use snafu::{Backtrace, ResultExt, Snafu};
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-/// Errors arising from the simulation or from underlying OS errors.
-#[derive(Debug, Snafu)]
-pub enum Error {}
+use tokio::runtime::Runtime;
+use tokio::sync::oneshot::channel as oneshot;
+
+mod error {
+    use super::*;
+
+    /// Errors arising from the simulation or from underlying OS errors.
+    #[derive(Debug, Snafu)]
+    #[snafu(visibility = "pub(crate)")]
+    pub enum Error {
+        /// Errors returned by the simulation.
+        Ethereum {
+            /// The underlying error as returned by the simulation.
+            source: ethereum::Error,
+        },
+
+        /// Errors returned by tokio.
+        Tokio {
+            /// The underlying error as returned by tokio.
+            source: tokio::io::Error,
+
+            /// The location the error was captured.
+            backtrace: Backtrace,
+        },
+    }
+}
+
+pub use error::Error;
 
 /// Shorthand type for results with this crate's error type.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
@@ -59,8 +84,24 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
-        // TODO: Fill this part in
-        Ok(())
+        let (sim, _) = ethereum::Simulation::new();
+
+        let (sender, receiver) = oneshot();
+
+        let mut spawner = Runtime::new().context(error::Tokio)?;
+
+        spawner.spawn(async {
+            let result = sim.run().await;
+            sender.send(result).unwrap();
+        });
+
+        // TODO: Do other work here, after starting the simulation. For example,
+        // start a web server.
+
+        spawner
+            .block_on(async { receiver.await })
+            .unwrap()
+            .context(error::Ethereum)
     }
 }
 
