@@ -7,13 +7,26 @@
 
 mod ethereum;
 
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-/// Errors arising from the simulation or from underlying OS errors.
-#[derive(Debug, Snafu)]
-pub enum Error {}
+mod error {
+    use super::*;
+
+    /// Errors arising from the simulation or from underlying OS errors.
+    #[derive(Debug, Snafu)]
+    #[snafu(visibility = "pub(crate)")]
+    pub enum Error {
+        /// Errors returned by the simulation.
+        Ethereum {
+            /// The underlying error as returned by the simulation.
+            source: ethereum::Error,
+        },
+    }
+}
+
+pub use error::Error;
 
 /// Shorthand type for results with this crate's error type.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
@@ -59,8 +72,11 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
-        // TODO: Fill this part in
-        Ok(())
+        let (sim, _) = ethereum::Simulation::new();
+
+        let task_handle = async_std::task::spawn(async { sim.run().await });
+
+        async_std::task::block_on(task_handle).context(error::Ethereum)
     }
 }
 
