@@ -40,15 +40,36 @@ pub mod interface_args {
     #[derive(Debug, Default)]
     pub struct CreateShardChain {}
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Eq, PartialEq)]
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
     }
+    impl From<&super::ShardBlock> for ShardBlock {
+        fn from(sb: &super::ShardBlock) -> Self {
+            let transactions: Vec<ShardTransaction> = sb.transactions.iter().map(|st| -> ShardTransaction {
+                ShardTransaction::from(st)
+            }).collect();
+            ShardBlock {
+                transactions,
+            }
+        }
+    }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Eq, PartialEq)]
     pub struct ShardTransaction {
         pub base64_encoded_data: String,
         pub ee_index: u32,
+    }
+
+    impl From<&super::ShardTransaction> for ShardTransaction {
+        fn from(st: &super::ShardTransaction) -> Self {
+            let base64_encoded_data = base64::encode(&st.data);
+            let super::EeIndex(ee_index) = st.ee_index;
+            Self {
+                base64_encoded_data,
+                ee_index,
+            }
+        }
     }
 }
 
@@ -109,10 +130,10 @@ impl EthereumSimulation {
     /// index of the created shard block
     pub fn create_shard_block(
         &mut self,
-        shard_index: u32,
+        shard_chain_index: u32,
         sb_args: interface_args::ShardBlock,
     ) -> Result<u32> {
-        if let Some(shard_chain) = self.shard_chains.get_mut(shard_index as usize) {
+        if let Some(shard_chain) = self.shard_chains.get_mut(shard_chain_index as usize) {
             let shard_block = ShardBlock::try_from(sb_args)?;
 
             // TODO: Run each transaction (which will update the EE state for that shard)
@@ -136,10 +157,27 @@ impl EthereumSimulation {
             Ok((shard_chain.shard_blocks.len() - 1) as u32)
         } else {
             Err(Error::OutOfBounds {
-                message: format!("No shard chain exists at index: {}", shard_index),
+                message: format!("No shard chain exists at index: {}", shard_chain_index),
             })
         }
     }
+
+    pub fn get_shard_block(&self, shard_chain_index: u32, shard_block_index: u32) -> Result<interface_args::ShardBlock> {
+        if let Some(shard_chain) = self.shard_chains.get(shard_chain_index as usize) {
+            if let Some(shard_block) = shard_chain.shard_blocks.get(shard_block_index as usize) {
+                Ok(interface_args::ShardBlock::from(shard_block))
+            } else {
+                Err(Error::OutOfBounds {
+                    message: format!("the shard chain at index '{}' does not contain a block at index '{}'", shard_chain_index, shard_block_index),
+                })
+            }
+        } else {
+            Err(Error::OutOfBounds {
+                message: format!("no shard chain exists at index '{}'", shard_chain_index),
+            })
+        }
+    }
+
 }
 
 #[derive(Debug, Default)]
@@ -369,5 +407,12 @@ mod tests {
         let block_index2 = eth.create_shard_block(sc_index, sb_args2).unwrap();
         assert_eq!(block_index1, 0, "first shard block added should have index of 0");
         assert_eq!(block_index2, 1, "second shard block added should have index of 1");
+
+        // Get back shard blocks and make sure they look the same as originally
+        let mut sb_args_returned = eth.get_shard_block(sc_index, block_index1).unwrap();
+        assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
+
+        let mut sb_args_returned = eth.get_shard_block(sc_index, block_index2).unwrap();
+        assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
     }
 }
