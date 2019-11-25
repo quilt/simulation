@@ -133,7 +133,7 @@ impl EthereumSimulation {
             //        }
 
             shard_chain.shard_blocks.push(shard_block);
-            Ok(shard_chain.shard_blocks.len() as u32)
+            Ok((shard_chain.shard_blocks.len() - 1) as u32)
         } else {
             Err(Error::OutOfBounds {
                 message: format!("No shard chain exists at index: {}", shard_index),
@@ -325,5 +325,49 @@ mod tests {
         let general_state = eth.get_general_simulation_state();
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(1, general_state.num_execution_environments);
+    }
+
+    fn create_example_shard_block_args(ee_index: u32) -> interface_args::ShardBlock {
+        // Create transaction arguments
+        let transaction_args1 = interface_args::ShardTransaction {
+            base64_encoded_data: base64::encode("some data"),
+            ee_index,
+        };
+        let transaction_args2 = interface_args::ShardTransaction {
+            base64_encoded_data: base64::encode("some other data"),
+            ee_index,
+        };
+
+        // Create shard block arguments
+        let sb_args = interface_args::ShardBlock {
+            transactions: vec![transaction_args1, transaction_args2],
+        };
+
+        sb_args
+    }
+    #[test]
+    fn can_create_and_get_shard_blocks() {
+        let mut eth = EthereumSimulation::new();
+
+        // Add EE
+        let example_wasm_code = "some wasm code here";
+        let ee_args = interface_args::ExecutionEnvironment {
+            base64_encoded_wasm_code: base64::encode(example_wasm_code),
+        };
+        let ee_index = eth.create_execution_environment(ee_args).unwrap();
+
+        // Add Shard Chain
+        let sc_args = interface_args::CreateShardChain {};
+        let sc_index = eth.create_shard_chain(sc_args);
+
+        // Create shard block args
+        let sb_args1 = create_example_shard_block_args(ee_index);
+        let sb_args2 = create_example_shard_block_args(ee_index);
+
+        // Add shard blocks and assert that indices look correct
+        let block_index1 = eth.create_shard_block(sc_index, sb_args1).unwrap();
+        let block_index2 = eth.create_shard_block(sc_index, sb_args2).unwrap();
+        assert_eq!(block_index1, 0, "first shard block added should have index of 0");
+        assert_eq!(block_index2, 1, "second shard block added should have index of 1");
     }
 }
