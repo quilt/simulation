@@ -1,4 +1,56 @@
+use base64;
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use snafu::{Snafu, ResultExt, Backtrace};
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    Decode {
+        backtrace: Backtrace,
+        source: base64::DecodeError,
+    },
+    OutOfBounds {
+        message: String,
+    }
+}
+
+pub mod interface_args {
+    #[derive(Debug, Default)]
+    pub struct GeneralSimulationState {
+        pub num_execution_environments: u32,
+        pub num_shard_chains: u32,
+    }
+
+    #[derive(Debug, Default)]
+    pub struct ExecutionEnvironment {
+        pub base64_encoded_wasm_code: String,
+    }
+
+    impl From<&super::ExecutionEnvironment> for ExecutionEnvironment {
+        fn from(ee: &super::ExecutionEnvironment) -> Self {
+            let base64_encoded_wasm_code = base64::encode(&ee.wasm_code);
+            Self {
+                base64_encoded_wasm_code,
+            }
+        }
+    }
+
+    #[derive(Debug, Default)]
+    pub struct CreateShardChain {}
+
+    #[derive(Debug, Default)]
+    pub struct ShardBlock {
+        pub transactions: Vec<ShardTransaction>,
+    }
+
+    #[derive(Debug, Default)]
+    pub struct ShardTransaction {
+        pub base64_encoded_data: String,
+        pub ee_index: u32,
+    }
+}
 
 #[derive(Debug)]
 pub struct EthereumSimulation {
@@ -14,24 +66,40 @@ impl EthereumSimulation {
         }
     }
 
+    pub fn get_general_simulation_state(&self) -> interface_args::GeneralSimulationState {
+        interface_args::GeneralSimulationState {
+            num_execution_environments: self.beacon_chain.execution_environments.len() as u32,
+            num_shard_chains: self.shard_chains.len() as u32,
+        }
+    }
+
     /// Creates a new execution environment on the BeaconChain and returns the
     /// index of the created execution environment
     pub fn create_execution_environment(
         &mut self,
-        ee_args: args::CreateExecutionEnvironment,
-    ) -> u32 {
-        let execution_environment = ExecutionEnvironment {
-            wasm_code: ee_args.wasm_code,
-        };
+        ee_args: interface_args::ExecutionEnvironment,
+    ) -> Result<u32> {
+        let execution_environment = ExecutionEnvironment::try_from(ee_args)?;
         let EeIndex(ee_index) = self
             .beacon_chain
             .add_execution_environment(execution_environment);
-        ee_index
+        Ok(ee_index)
+    }
+
+    pub fn get_execution_environment(
+        &self,
+        execution_environment_index: u32,
+    ) -> Option<interface_args::ExecutionEnvironment> {
+        if let Some(execution_environment) = self.beacon_chain.execution_environments.get(execution_environment_index as usize) {
+            Some(interface_args::ExecutionEnvironment::from(execution_environment))
+        } else {
+            None
+        }
     }
 
     /// Returns the index of the newly added shard chain
     /// Longer-term, can accept a config here
-    pub fn create_shard_chain(&mut self, sc_args: args::CreateShardChain) -> u32 {
+    pub fn create_shard_chain(&mut self, sc_args: interface_args::CreateShardChain) -> u32 {
         let shard_chain = ShardChain::new();
         self.shard_chains.push(shard_chain);
         (self.shard_chains.len() - 1) as u32
@@ -42,55 +110,36 @@ impl EthereumSimulation {
     pub fn create_shard_block(
         &mut self,
         shard_index: u32,
-        block_args: args::CreateShardBlock,
-    ) -> u32 {
-        // Worth noting that in a real-world use case "sub-transactions" may be merged
-        // into one "combined" transaction before being executed / committed to a block
-        //        let &mut shard_chain = &mut self.shard_chains[shard_index];
-        //
-        //        // Sam to implement: create the transactions and the shard block and run the transactions
-        //        let shard_block = ShardBlock::new(Vec::new());
-        //
-        //        shard_chain.shard_blocks.push(shard_block);
-        //        (shard_chain.shard_blocks.len() - 1) as u32
+        sb_args: interface_args::ShardBlock,
+    ) -> Result<u32> {
+        if let Some(shard_chain) = self.shard_chains.get_mut(shard_index as usize) {
+            let shard_block = ShardBlock::try_from(sb_args)?;
 
-        unimplemented!();
+            // TODO: Run each transaction (which will update the EE state for that shard)
+            // Questions to answer:
+            //   * What if the decoding of the base64 data string fails? Remove this transaction from the block?  Send back error value as result?
+            //   * What if executing the EE code fails with the given data? (Same options as above?)
+            // Example code from previous brainstorm:
+            //        let transactions = shard_block.transactions
+            //
+            //        for transaction in shard_block.transactions {
+            //            // This executes everything and presumably also updates the EE State on the shard
+            //            let ee = transaction.execution_environment;
+            //            let input_data = transaction.data;
+            //
+            //            let code = self.beacon_chain.get(ee);
+            //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
+            //            runtime.execute(input_data);
+            //        }
 
-        //        let transactions = block.transactions
-        //
-        //        for transaction in block.transactions {
-        //            // This executes everything and presumably also updates the EE State on the shard
-        //            let ee = transaction.execution_environment;
-        //            let input_data = transaction.data;
-        //
-        //            let code = self.beacon_chain.get(ee);
-        //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
-        //            runtime.execute(input_data);
-        //        }
+            shard_chain.shard_blocks.push(shard_block);
+            Ok(shard_chain.shard_blocks.len() as u32)
+        } else {
+            Err(Error::OutOfBounds {
+                message: format!("No shard chain exists at index: {}", shard_index),
+            })
+        }
     }
-
-    /* Getter methods still needed
-        Beacon State
-        Shard State
-        Transactions (do we want to store EE state per shard before / after each transaction?
-
-    */
-}
-
-pub mod args {
-    #[derive(Debug, Default)]
-    pub struct CreateExecutionEnvironment {
-        // TODO @gregt: switch this to be base64 encoded in the next diff
-        // Also add conversion function using From to go from this to an internal EE representation (and same for structs below)
-        // (not adding here to avoid huge PRs with too many purposes)
-        pub wasm_code: Vec<u8>,
-    }
-
-    #[derive(Debug, Default)]
-    pub struct CreateShardChain {}
-
-    #[derive(Debug, Default)]
-    pub struct CreateShardBlock {}
 }
 
 #[derive(Debug, Default)]
@@ -143,6 +192,16 @@ struct ExecutionEnvironment {
     wasm_code: Vec<u8>,
 }
 
+impl TryFrom<interface_args::ExecutionEnvironment> for ExecutionEnvironment {
+    type Error = Error;
+    fn try_from(ee_args: interface_args::ExecutionEnvironment) -> Result<Self, Self::Error> {
+        let wasm_code = base64::decode(&ee_args.base64_encoded_wasm_code).context(Decode)?;
+        Ok(Self {
+            wasm_code,
+        })
+    }
+}
+
 // The execution environment state that lives on each shard chain
 #[derive(Debug)]
 struct ExecutionEnvironmentState {
@@ -162,18 +221,109 @@ impl ShardBlock {
         self.transactions.push(transaction);
     }
 }
+impl TryFrom<interface_args::ShardBlock> for ShardBlock {
+    type Error = Error;
+    fn try_from(sb_args: interface_args::ShardBlock) -> Result<Self, Self::Error> {
+        let transactions: Result<Vec<ShardTransaction>> = sb_args.transactions.iter().map(|sbt_args| -> Result<ShardTransaction> {
+            ShardTransaction::try_from(sbt_args)
+        }).collect();
+        match transactions {
+            Err(e) => {
+                return Err(e);
+            },
+            Ok(transactions) => {
+                Ok(ShardBlock {
+                    transactions,
+                })
+            }
+        }
+    }
+}
 
 #[derive(Default, Debug)]
 struct ShardTransaction {
     data: Vec<u8>,
     ee_index: EeIndex,
 }
+impl TryFrom<&interface_args::ShardTransaction> for ShardTransaction {
+    type Error = Error;
+    fn try_from(sbt_args: &interface_args::ShardTransaction) -> Result<Self, Self::Error> {
+        let data = base64::decode(&sbt_args.base64_encoded_data).context(Decode)?;
+        let ee_index = EeIndex(sbt_args.ee_index);
+        Ok(Self {
+            data,
+            ee_index,
+        })
+    }
+}
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     #[test]
-    fn basics() {
-        let eth_magic = EthMagicManager::new();
+    fn can_create_and_get_execution_environments() {
+        let mut eth = EthereumSimulation::new();
+
+        // Can create a new EE
+        let example_wasm_code = "some wasm code here";
+        let ee_args = interface_args::ExecutionEnvironment {
+            base64_encoded_wasm_code: base64::encode(example_wasm_code),
+        };
+        let result = eth.create_execution_environment(ee_args).unwrap();
+        assert_eq!(result, 0, "The first execution environment created should have an index of 0");
+
+        // Can retrieve the newly-created EE
+        let ee_args_retrieved = eth.get_execution_environment(result).unwrap();
+        assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
+
+        // Can create and retrieve a second EE
+        let example_wasm_code = "some other wasm code here";
+        let ee_args = interface_args::ExecutionEnvironment {
+            base64_encoded_wasm_code: base64::encode(example_wasm_code),
+        };
+        let result = eth.create_execution_environment(ee_args).unwrap();
+        assert_eq!(result, 1, "The second execution environment created should have an index of 1");
+        let ee_args_retrieved = eth.get_execution_environment(result).unwrap();
+        assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
+    }
+    #[test]
+    fn getting_ee_at_incorrect_index_should_return_none() {
+        let mut eth = EthereumSimulation::new();
+        let ee_args_retrieved = eth.get_execution_environment(152);
+        assert!(ee_args_retrieved.is_none());
+    }
+    #[test]
+    fn can_create_shard_chains() {
+        let mut eth = EthereumSimulation::new();
+        let sc_args = interface_args::CreateShardChain {};
+        let result = eth.create_shard_chain(sc_args);
+        assert_eq!(result, 0, "The first shard chain created should have an index of 0");
+
+        let sc_args = interface_args::CreateShardChain {};
+        let result = eth.create_shard_chain(sc_args);
+        assert_eq!(result, 1, "The second shard chain created should have an index of 1");
+    }
+    #[test]
+    fn can_get_general_simulation_state() {
+        let mut eth = EthereumSimulation::new();
+
+        let general_state = eth.get_general_simulation_state();
+        assert_eq!(0, general_state.num_shard_chains);
+        assert_eq!(0, general_state.num_execution_environments);
+
+        let sc_args = interface_args::CreateShardChain {};
+        eth.create_shard_chain(sc_args);
+
+        let general_state = eth.get_general_simulation_state();
+        assert_eq!(1, general_state.num_shard_chains);
+        assert_eq!(0, general_state.num_execution_environments);
+
+        let ee_args = interface_args::ExecutionEnvironment {
+            base64_encoded_wasm_code: base64::encode("wasm msaw"),
+        };
+        eth.create_execution_environment(ee_args);
+        let general_state = eth.get_general_simulation_state();
+        assert_eq!(1, general_state.num_shard_chains);
+        assert_eq!(1, general_state.num_execution_environments);
     }
 }
