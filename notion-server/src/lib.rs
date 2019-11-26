@@ -2,9 +2,12 @@
 //! 2.0's second phase, with a particular focus on evaluating execution
 //! environments.
 
+#![feature(proc_macro_hygiene, decl_macro)]
+
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
+mod api;
 mod ethereum;
 
 use snafu::{Backtrace, ResultExt, Snafu};
@@ -21,6 +24,12 @@ mod error {
     #[derive(Debug, Snafu)]
     #[snafu(visibility = "pub(crate)")]
     pub enum Error {
+        /// Errors returned by the API.
+        Api {
+            /// The underlying error as returned by the API.
+            source: api::Error,
+        },
+
         /// Errors returned by the simulation.
         Ethereum {
             /// The underlying error as returned by the simulation.
@@ -84,7 +93,7 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
-        let (sim, _) = ethereum::Simulation::new();
+        let (sim, handle) = ethereum::Simulation::new();
 
         let (sender, receiver) = oneshot();
 
@@ -95,8 +104,7 @@ impl Notion {
             sender.send(result).unwrap();
         });
 
-        // TODO: Do other work here, after starting the simulation. For example,
-        // start a web server.
+        api::run(handle).context(error::Api)?;
 
         spawner
             .block_on(async { receiver.await })
