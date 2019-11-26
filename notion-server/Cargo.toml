@@ -13,3 +13,4 @@ edition = "2018"
 [dependencies]
 snafu = "0.6.0"
 structopt = "0.3.4"
+tokio = { version = "0.2.0", features = ["sync", "io-util", "rt-core"] }
