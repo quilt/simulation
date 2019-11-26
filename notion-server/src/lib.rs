@@ -1,18 +1,19 @@
-//! `notion-server` (roughly pronounced twaal) is a server that simulates Ethereum
-//! 2.0's second phase, with a particular focus on evaluating execution
-//! environments.
+//! `notion-server` is a server that simulates Ethereum 2.0's second phase,
+//! with a particular focus on evaluating execution environments.
 
+#![feature(proc_macro_hygiene, decl_macro)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
+mod api;
 mod ethereum;
+
+use futures_util::future::{self, FutureExt};
+use futures_util::pin_mut;
 
 use snafu::{Backtrace, ResultExt, Snafu};
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-use tokio::runtime::Runtime;
-use tokio::sync::oneshot::channel as oneshot;
 
 mod error {
     use super::*;
@@ -21,6 +22,12 @@ mod error {
     #[derive(Debug, Snafu)]
     #[snafu(visibility = "pub(crate)")]
     pub enum Error {
+        /// Errors returned by the API.
+        Api {
+            /// The underlying error as returned by the API.
+            source: api::Error,
+        },
+
         /// Errors returned by the simulation.
         Ethereum {
             /// The underlying error as returned by the simulation.
@@ -84,25 +91,25 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
+        self.async_run()
+    }
+
+    #[tokio::main]
+    async fn async_run(&self) -> Result<()> {
         let simulation = ethereum::Simulation::new();
-        let handle = ethereum::Handle::new(simulation);
+        let (dispatch, handle) = ethereum::Dispatch::new(simulation);
 
-        let (sender, receiver) = oneshot();
+        let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Ethereum)));
+        let api_run = tokio::task::spawn_blocking(|| api::run(handle).context(error::Api));
 
-        let mut spawner = Runtime::new().context(error::Tokio)?;
+        pin_mut!(eth_run);
+        pin_mut!(api_run);
 
-        spawner.spawn(async {
-            let result = handle.run().await;
-            sender.send(result).unwrap();
-        });
-
-        // TODO: Do other work here, after starting the simulation. For example,
-        // start a web server.
-
-        spawner
-            .block_on(async { receiver.await })
+        future::try_select(eth_run, api_run)
+            .await
             .unwrap()
-            .context(error::Ethereum)
+            .factor_first()
+            .0
     }
 }
 
