@@ -23,109 +23,111 @@ pub enum Error {
     Terminated,
 }
 
-//#[derive(Debug)]
-//enum Operation {
-//    CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<EeIndex>),
-//    CreateShardChain(args::CreateShardChain, Sender<u32>),
-//    CreateShardBlock(args::CreateShardBlock, Sender<u32>),
-//    GetShardBlock(args::GetShardBlock, Sender<ShardBlock>),
-//}
+#[derive(Debug)]
+enum Operation {
+    GetSimulationState(args::GetSimulationState, Sender<args::SimulationState>),
+    CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u32>>),
+    GetExecutionEnvironment(args::GetExecutionEnvironment, Sender<args::ExecutionEnvironment>),
+    CreateShardChain(args::CreateShardChain, Sender<u32>),
+    CreateShardBlock(args::CreateShardBlock, Sender<Result<u32>>),
+    GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
+}
 
-//#[derive(Debug, Clone)]
-//pub struct Handle(Sender<Operation>);
+#[derive(Debug)]
+pub struct Handle123 {
+    receiver: Receiver<Operation>,
+    sender: Sender<Operation>,
+    simulation: Simulation,
+}
 
-//impl Handle {
-//    pub async fn create_shard_chain(&mut self, arg: args::CreateShardChain) -> Result<u32> {
-//        let (sender, mut receiver) = channel(1);
-//
-//        self.0.send(Operation::CreateShardChain(arg, sender)).await;
-//
-//        receiver.recv().await.context(Terminated)
-//    }
-//
-//    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<u32> {
-//        let (sender, mut receiver) = channel(1);
-//
-//        self.0.send(Operation::CreateShardBlock(arg, sender)).await;
-//
-//        receiver.recv().await.context(Terminated)
-//    }
-//
-//    pub async fn create_execution_environment(
-//        &mut self,
-//        arg: args::CreateExecutionEnvironment,
-//    ) -> Result<EeIndex> {
-//        let (sender, mut receiver) = channel(1);
-//
-//        self.0
-//            .send(Operation::CreateExecutionEnvironment(arg, sender))
-//            .await;
-//
-//        receiver.recv().await.context(Terminated)
-//    }
-//
-//    pub async fn shard_block(&mut self, arg: args::GetShardBlock) -> Result<ShardBlock> {
-//        let (sender, mut receiver) = channel(1);
-//
-//        self.0.send(Operation::GetShardBlock(arg, sender)).await;
-//
-//        receiver.recv().await.context(Terminated)
-//    }
-//}
+impl Handle123 {
+    pub fn new(simulation: Simulation) -> Self {
+        let (sender, receiver) = channel(1);
+
+        Self {
+            receiver,
+            sender,
+            simulation,
+        }
+    }
+
+    pub async fn run(mut self) -> Result<()> {
+        eprintln!("Simulation Running: {:?}", std::thread::current().id());
+        while let Some(op) = self.receiver.recv().await {
+            match op {
+                Operation::CreateExecutionEnvironment(args, mut reply) => {
+                    let res = self.simulation.create_execution_environment(args);
+                    reply.send(res).await;
+                }
+                Operation::CreateShardBlock(args, mut reply) => {
+                    let res = self.simulation.create_shard_block(args);
+                    reply.send(res).await;
+                }
+                Operation::CreateShardChain(args, mut reply) => {
+                    let res = self.simulation.create_shard_chain(args);
+                    reply.send(res).await;
+                }
+                Operation::GetShardBlock(args, mut reply) => {
+                    let res = self.simulation.get_shard_block(args);
+                    reply.send(res).await;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn create_shard_chain(&mut self, arg: args::CreateShardChain) -> Result<u32> {
+        let (sender, mut receiver) = channel(1);
+
+        self.sender.send(Operation::CreateShardChain(arg, sender)).await;
+
+        receiver.recv().await.context(Terminated)
+    }
+
+    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<u32> {
+        let (sender, mut receiver) = channel(1);
+
+        self.sender.send(Operation::CreateShardBlock(arg, sender)).await;
+
+        receiver.recv().await.context(Terminated)
+    }
+
+    pub async fn create_execution_environment(
+        &mut self,
+        arg: args::CreateExecutionEnvironment,
+    ) -> Result<EeIndex> {
+        let (sender, mut receiver) = channel(1);
+
+        self.sender
+            .send(Operation::CreateExecutionEnvironment(arg, sender))
+            .await;
+
+        receiver.recv().await.context(Terminated)
+    }
+
+    pub async fn shard_block(&mut self, arg: args::GetShardBlock) -> Result<args::ShardBlock> {
+        let (sender, mut receiver) = channel(1);
+
+        self.sender.send(Operation::GetShardBlock(arg, sender)).await;
+
+        receiver.recv().await.context(Terminated)
+    }
+}
 
 #[derive(Debug)]
 pub struct Simulation {
     beacon_chain: BeaconChain,
     shard_chains: Vec<ShardChain>,
-//    receiver: Receiver<Operation>,
 }
 
 impl Simulation {
-//    pub fn new() -> (Self, Handle) {
-//        let (sender, receiver) = channel(1);
-//
-//        let sim = Self {
-//            beacon_chain: BeaconChain::new(),
-//            shard_chains: Vec::new(),
-//            receiver,
-//        };
-//
-//        let handle = Handle(sender);
-//
-//        (sim, handle)
-//    }
     pub fn new() -> Self {
         Self {
             beacon_chain: BeaconChain::new(),
             shard_chains: Vec::new(),
         }
     }
-
-//    pub async fn run(mut self) -> Result<()> {
-//        eprintln!("Simulation Running: {:?}", std::thread::current().id());
-//        while let Some(op) = self.receiver.recv().await {
-//            match op {
-//                Operation::CreateExecutionEnvironment(args, mut reply) => {
-//                    let res = self.create_execution_environment(args);
-//                    reply.send(EeIndex(res)).await;
-//                }
-//                Operation::CreateShardBlock(args, mut reply) => {
-//                    let res = self.create_shard_block(args);
-//                    reply.send(res).await;
-//                }
-//                Operation::CreateShardChain(args, mut reply) => {
-//                    let res = self.create_shard_chain(args);
-//                    reply.send(res).await;
-//                }
-//                Operation::GetShardBlock(args, mut reply) => {
-//                    let res = self.get_shard_block(args);
-//                    reply.send(res).await;
-//                }
-//            }
-//        }
-//
-//        Ok(())
-//    }
 
     pub fn simulation_state(&self) -> args::SimulationState {
         args::SimulationState {
@@ -138,9 +140,9 @@ impl Simulation {
     /// index of the created execution environment
     pub fn create_execution_environment(
         &mut self,
-        ee_args: args::ExecutionEnvironment,
+        args: args::CreateExecutionEnvironment,
     ) -> Result<u32> {
-        let execution_environment = ExecutionEnvironment::try_from(ee_args)?;
+        let execution_environment = ExecutionEnvironment::try_from(args.execution_environment)?;
         let EeIndex(ee_index) = self
             .beacon_chain
             .add_execution_environment(execution_environment);
@@ -170,11 +172,12 @@ impl Simulation {
     /// index of the created shard block
     pub fn create_shard_block(
         &mut self,
-        shard_chain_index: u32,
-        sb_args: args::ShardBlock,
+        args: args::CreateShardBlock,
+//        shard_chain_index: u32,
+//        sb_args: args::ShardBlock,
     ) -> Result<u32> {
-        if let Some(shard_chain) = self.shard_chains.get_mut(shard_chain_index as usize) {
-            let shard_block = ShardBlock::try_from(sb_args)?;
+        if let Some(shard_chain) = self.shard_chains.get_mut(args.shard_chain_index as usize) {
+            let shard_block = ShardBlock::try_from(args.shard_block)?;
 
             // TODO: Run each transaction (which will update the EE state for that shard)
             // Questions to answer:
@@ -197,34 +200,60 @@ impl Simulation {
             Ok((shard_chain.shard_blocks.len() - 1) as u32)
         } else {
             Err(Error::OutOfBounds {
-                message: format!("No shard chain exists at index: {}", shard_chain_index),
+                message: format!("No shard chain exists at index: {}", args.shard_chain_index),
             })
         }
     }
 
-    pub fn get_shard_block(&self, shard_chain_index: u32, shard_block_index: u32) -> Result<args::ShardBlock> {
-        if let Some(shard_chain) = self.shard_chains.get(shard_chain_index as usize) {
-            if let Some(shard_block) = shard_chain.shard_blocks.get(shard_block_index as usize) {
+    pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
+        if let Some(shard_chain) = self.shard_chains.get(args.shard_chain_index as usize) {
+            if let Some(shard_block) = shard_chain.shard_blocks.get(args.shard_block_index as usize) {
                 Ok(args::ShardBlock::from(shard_block))
             } else {
                 Err(Error::OutOfBounds {
-                    message: format!("the shard chain at index '{}' does not contain a block at index '{}'", shard_chain_index, shard_block_index),
+                    message: format!("the shard chain at index '{}' does not contain a block at index '{}'", args.shard_chain_index, args.shard_block_index),
                 })
             }
         } else {
             Err(Error::OutOfBounds {
-                message: format!("no shard chain exists at index '{}'", shard_chain_index),
+                message: format!("no shard chain exists at index '{}'", args.shard_chain_index),
             })
         }
     }
 }
 
 pub mod args {
+
+    // Incoming argument values
+
     #[derive(Debug, Default)]
-    pub struct SimulationState {
-        pub num_execution_environments: u32,
-        pub num_shard_chains: u32,
+    pub struct GetSimulationState {
+
     }
+    #[derive(Debug, Default)]
+    pub struct CreateExecutionEnvironment {
+        pub execution_environment: ExecutionEnvironment,
+    }
+    #[derive(Debug, Default)]
+    pub struct GetExecutionEnvironment {
+        pub execution_environment_index: u32,
+    }
+    #[derive(Debug, Default)]
+    pub struct CreateShardChain {
+
+    }
+    #[derive(Debug, Default)]
+    pub struct CreateShardBlock {
+        pub shard_chain_index: u32,
+        pub shard_block: ShardBlock,
+    }
+    #[derive(Debug, Default)]
+    pub struct GetShardBlock {
+        pub shard_chain_index: u32,
+        pub shard_block_index: u32,
+    }
+
+    // Return values AND/OR sub-components of incoming argument values
 
     #[derive(Debug, Default)]
     pub struct ExecutionEnvironment {
@@ -241,8 +270,10 @@ pub mod args {
     }
 
     #[derive(Debug, Default)]
-    pub struct CreateShardChain {}
-
+    pub struct SimulationState {
+        pub num_execution_environments: u32,
+        pub num_shard_chains: u32,
+    }
     #[derive(Debug, Default, Eq, PartialEq)]
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
@@ -273,12 +304,6 @@ pub mod args {
                 ee_index,
             }
         }
-    }
-
-    #[derive(Debug, Default)]
-    pub struct GetShardBlock {
-        shard_index: u32,
-        block_number: u32,
     }
 }
 
@@ -349,8 +374,7 @@ struct ExecutionEnvironmentState {
 }
 
 #[derive(Debug)]
-// TODO: Why is this public?
-pub struct ShardBlock {
+struct ShardBlock {
     transactions: Vec<ShardTransaction>,
 }
 
@@ -410,7 +434,10 @@ mod tests {
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
         };
-        let result = eth.create_execution_environment(ee_args).unwrap();
+        let create_ee_args = args::CreateExecutionEnvironment {
+            execution_environment: ee_args,
+        };
+        let result = eth.create_execution_environment(create_ee_args).unwrap();
         assert_eq!(result, 0, "The first execution environment created should have an index of 0");
 
         // Can retrieve the newly-created EE
@@ -422,7 +449,10 @@ mod tests {
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
         };
-        let result = eth.create_execution_environment(ee_args).unwrap();
+        let create_ee_args = args::CreateExecutionEnvironment {
+            execution_environment: ee_args,
+        };
+        let result = eth.create_execution_environment(create_ee_args).unwrap();
         assert_eq!(result, 1, "The second execution environment created should have an index of 1");
         let ee_args_retrieved = eth.get_execution_environment(result).unwrap();
         assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
@@ -462,7 +492,10 @@ mod tests {
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode("wasm msaw"),
         };
-        eth.create_execution_environment(ee_args);
+        let create_ee_args = args::CreateExecutionEnvironment {
+            execution_environment: ee_args,
+        };
+        eth.create_execution_environment(create_ee_args);
         let general_state = eth.simulation_state();
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(1, general_state.num_execution_environments);
@@ -495,7 +528,10 @@ mod tests {
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
         };
-        let ee_index = eth.create_execution_environment(ee_args).unwrap();
+        let create_ee_args = args::CreateExecutionEnvironment {
+            execution_environment: ee_args,
+        };
+        let ee_index = eth.create_execution_environment(create_ee_args).unwrap();
 
         // Add Shard Chain
         let sc_args = args::CreateShardChain {};
@@ -506,16 +542,32 @@ mod tests {
         let sb_args2 = create_example_shard_block_args(ee_index);
 
         // Add shard blocks and assert that indices look correct
-        let block_index1 = eth.create_shard_block(sc_index, sb_args1).unwrap();
-        let block_index2 = eth.create_shard_block(sc_index, sb_args2).unwrap();
+        let create_shard_block_args1 = args::CreateShardBlock {
+            shard_chain_index: sc_index,
+            shard_block: sb_args1,
+        };
+        let create_shard_block_args2 = args::CreateShardBlock {
+            shard_chain_index: sc_index,
+            shard_block: sb_args2,
+        };
+        let block_index1 = eth.create_shard_block(create_shard_block_args1).unwrap();
+        let block_index2 = eth.create_shard_block(create_shard_block_args2).unwrap();
         assert_eq!(block_index1, 0, "first shard block added should have index of 0");
         assert_eq!(block_index2, 1, "second shard block added should have index of 1");
 
         // Get back shard blocks and make sure they look the same as originally
-        let mut sb_args_returned = eth.get_shard_block(sc_index, block_index1).unwrap();
+        let get_shard_block_args1 = args::GetShardBlock {
+            shard_chain_index: sc_index,
+            shard_block_index: block_index1,
+        };
+        let mut sb_args_returned = eth.get_shard_block(get_shard_block_args1).unwrap();
         assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
 
-        let mut sb_args_returned = eth.get_shard_block(sc_index, block_index2).unwrap();
+        let get_shard_block_args2 = args::GetShardBlock {
+            shard_chain_index: sc_index,
+            shard_block_index: block_index2,
+        };
+        let mut sb_args_returned = eth.get_shard_block(get_shard_block_args2).unwrap();
         assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
     }
 }
