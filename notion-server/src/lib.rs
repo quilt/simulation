@@ -11,7 +11,7 @@ use snafu::{Backtrace, ResultExt, Snafu};
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use tokio::runtime::{Runtime, Handle};
+use tokio::runtime::Runtime;
 use tokio::sync::oneshot::channel as oneshot;
 
 mod error {
