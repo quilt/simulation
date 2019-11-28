@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use ewasm::{RootRuntime, Execute};
+use ewasm::{Execute, RootRuntime};
 
 use rustc_hex::{FromHex, ToHex};
 
@@ -231,31 +231,45 @@ impl Simulation {
     /// Creates a new shard block and returns the
     /// index of the created shard block
     fn create_shard_block(&mut self, args: args::CreateShardBlock) -> Result<u32> {
-        let mut shard_chain = self.shard_chains.get_mut(args.shard_chain_index as usize).context(OutOfBounds {
-            message: format!("No shard chain exists at index: {}", args.shard_chain_index),
-        })?;
+        let mut shard_chain = self
+            .shard_chains
+            .get_mut(args.shard_chain_index as usize)
+            .context(OutOfBounds {
+                message: format!("No shard chain exists at index: {}", args.shard_chain_index),
+            })?;
 
         let mut transactions = Vec::with_capacity(args.shard_block.transactions.len());
 
         for transaction in args.shard_block.transactions {
-            let execution_environment = self.beacon_chain.execution_environments.get(transaction.ee_index as usize).context(OutOfBounds {
-                message: format!("No execution environment exists at index: {}", transaction.ee_index),
-            })?;
+            let execution_environment = self
+                .beacon_chain
+                .execution_environments
+                .get(transaction.ee_index as usize)
+                .context(OutOfBounds {
+                    message: format!(
+                        "No execution environment exists at index: {}",
+                        transaction.ee_index
+                    ),
+                })?;
             let code = &execution_environment.wasm_code;
 
-            let pre_state = shard_chain.execution_environment_state.get(&EeIndex(transaction.ee_index)).unwrap_or(&execution_environment.initial_shard_state);
+            let pre_state = shard_chain
+                .execution_environment_state
+                .get(&EeIndex(transaction.ee_index))
+                .unwrap_or(&execution_environment.initial_shard_state);
             let data = base64::decode(&transaction.base64_encoded_data).context(Decode)?;
             let mut runtime = RootRuntime::new(&code, &data, pre_state.data);
             let post_root = runtime.execute();
             drop(runtime);
 
-            shard_chain.execution_environment_state.insert(EeIndex(transaction.ee_index), ExecutionEnvironmentState {
-                data: post_root,
-            });
+            shard_chain.execution_environment_state.insert(
+                EeIndex(transaction.ee_index),
+                ExecutionEnvironmentState { data: post_root },
+            );
 
             transactions.push(ShardTransaction {
                 data,
-                ee_index: EeIndex(transaction.ee_index)
+                ee_index: EeIndex(transaction.ee_index),
             });
         }
 
@@ -451,8 +465,14 @@ impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
     type Error = Error;
     fn try_from(ee_args: args::ExecutionEnvironment) -> Result<Self, Self::Error> {
         let wasm_code = base64::decode(&ee_args.base64_encoded_wasm_code).context(Decode)?;
-        let initial_shard_state_vec = base64::decode(&ee_args.base64_encoded_initial_state).context(Decode)?;
-        Ok(Self { wasm_code, initial_shard_state: ExecutionEnvironmentState{ data: Bytes32::from(&initial_shard_state_vec) } })
+        let initial_shard_state_vec =
+            base64::decode(&ee_args.base64_encoded_initial_state).context(Decode)?;
+        Ok(Self {
+            wasm_code,
+            initial_shard_state: ExecutionEnvironmentState {
+                data: Bytes32::from(&initial_shard_state_vec),
+            },
+        })
     }
 }
 
@@ -705,30 +725,54 @@ mod tests {
         );
     }
 
-    fn produce_block(test_name: &str, wasm_code: &[u8], initial_state: &str, data: &str, expected_end_state: &str) {
+    fn produce_block(
+        test_name: &str,
+        wasm_code: &[u8],
+        initial_state: &str,
+        data: &str,
+        expected_end_state: &str,
+    ) {
         let mut simulation = Simulation::new();
 
-        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
-            execution_environment: args::ExecutionEnvironment{
-                base64_encoded_wasm_code: base64::encode(wasm_code),
-                base64_encoded_initial_state: base64::encode(&initial_state.from_hex().unwrap()),
-            }
-        }).unwrap());
+        assert_eq!(
+            0,
+            simulation
+                .create_execution_environment(args::CreateExecutionEnvironment {
+                    execution_environment: args::ExecutionEnvironment {
+                        base64_encoded_wasm_code: base64::encode(wasm_code),
+                        base64_encoded_initial_state: base64::encode(
+                            &initial_state.from_hex().unwrap()
+                        ),
+                    }
+                })
+                .unwrap()
+        );
 
-        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
+        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain {}));
 
-        assert_eq!(0, simulation.create_shard_block(args::CreateShardBlock{
-            shard_chain_index: 0,
-            shard_block: args::ShardBlock{
-                transactions: vec![args::ShardTransaction{
-                    base64_encoded_data: base64::encode(&data.from_hex().unwrap()),
-                    ee_index: 0,
-                }]
-            }
-        }).unwrap());
+        assert_eq!(
+            0,
+            simulation
+                .create_shard_block(args::CreateShardBlock {
+                    shard_chain_index: 0,
+                    shard_block: args::ShardBlock {
+                        transactions: vec![args::ShardTransaction {
+                            base64_encoded_data: base64::encode(&data.from_hex().unwrap()),
+                            ee_index: 0,
+                        }]
+                    }
+                })
+                .unwrap()
+        );
 
-        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
-        assert_eq!(post_state.data, Bytes32::from(&expected_end_state.from_hex().unwrap()));
+        let post_state = simulation.shard_chains[0]
+            .execution_environment_state
+            .get(&EeIndex(0))
+            .unwrap();
+        assert_eq!(
+            post_state.data,
+            Bytes32::from(&expected_end_state.from_hex().unwrap())
+        );
     }
 
     #[test]
