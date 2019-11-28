@@ -28,7 +28,10 @@ enum Operation {
     CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u32>>),
     CreateShardBlock(args::CreateShardBlock, Sender<Result<u32>>),
     CreateShardChain(args::CreateShardChain, Sender<u32>),
-    GetExecutionEnvironment(args::GetExecutionEnvironment, Sender<Result<args::ExecutionEnvironment>>),
+    GetExecutionEnvironment(
+        args::GetExecutionEnvironment,
+        Sender<Result<args::ExecutionEnvironment>>,
+    ),
     GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
     GetSimulationState(args::GetSimulationState, Sender<args::SimulationState>),
 }
@@ -102,7 +105,9 @@ impl Handle {
     pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<Result<u32>> {
         let (sender, mut receiver) = channel(1);
 
-        self.sender.send(Operation::CreateShardBlock(arg, sender)).await;
+        self.sender
+            .send(Operation::CreateShardBlock(arg, sender))
+            .await;
 
         receiver.recv().await.context(Terminated)
     }
@@ -110,31 +115,48 @@ impl Handle {
     pub async fn create_shard_chain(&mut self, arg: args::CreateShardChain) -> Result<u32> {
         let (sender, mut receiver) = channel(1);
 
-        self.sender.send(Operation::CreateShardChain(arg, sender)).await;
+        self.sender
+            .send(Operation::CreateShardChain(arg, sender))
+            .await;
 
         receiver.recv().await.context(Terminated)
     }
 
-    pub async fn execution_environment(&mut self, arg: args::GetExecutionEnvironment) -> Result<Result<args::ExecutionEnvironment>> {
+    pub async fn execution_environment(
+        &mut self,
+        arg: args::GetExecutionEnvironment,
+    ) -> Result<Result<args::ExecutionEnvironment>> {
         let (sender, mut receiver) = channel(1);
 
-        self.sender.send(Operation::GetExecutionEnvironment(arg, sender)).await;
+        self.sender
+            .send(Operation::GetExecutionEnvironment(arg, sender))
+            .await;
 
         receiver.recv().await.context(Terminated)
     }
 
-    pub async fn shard_block(&mut self, arg: args::GetShardBlock) -> Result<Result<args::ShardBlock>> {
+    pub async fn shard_block(
+        &mut self,
+        arg: args::GetShardBlock,
+    ) -> Result<Result<args::ShardBlock>> {
         let (sender, mut receiver) = channel(1);
 
-        self.sender.send(Operation::GetShardBlock(arg, sender)).await;
+        self.sender
+            .send(Operation::GetShardBlock(arg, sender))
+            .await;
 
         receiver.recv().await.context(Terminated)
     }
 
-    pub async fn simulation_state(&mut self, arg: args::GetSimulationState) -> Result<args::SimulationState> {
+    pub async fn simulation_state(
+        &mut self,
+        arg: args::GetSimulationState,
+    ) -> Result<args::SimulationState> {
         let (sender, mut receiver) = channel(1);
 
-        self.sender.send(Operation::GetSimulationState(arg, sender)).await;
+        self.sender
+            .send(Operation::GetSimulationState(arg, sender))
+            .await;
 
         receiver.recv().await.context(Terminated)
     }
@@ -178,11 +200,18 @@ impl Simulation {
         &self,
         args: args::GetExecutionEnvironment,
     ) -> Result<args::ExecutionEnvironment> {
-        if let Some(execution_environment) = self.beacon_chain.execution_environments.get(args.execution_environment_index as usize) {
+        if let Some(execution_environment) = self
+            .beacon_chain
+            .execution_environments
+            .get(args.execution_environment_index as usize)
+        {
             Ok(args::ExecutionEnvironment::from(execution_environment))
         } else {
             Err(Error::OutOfBounds {
-                message: format!("No execution environment exists at index: {}", args.execution_environment_index),
+                message: format!(
+                    "No execution environment exists at index: {}",
+                    args.execution_environment_index
+                ),
             })
         }
     }
@@ -197,10 +226,7 @@ impl Simulation {
 
     /// Creates a new shard block and returns the
     /// index of the created shard block
-    pub fn create_shard_block(
-        &mut self,
-        args: args::CreateShardBlock,
-    ) -> Result<u32> {
+    pub fn create_shard_block(&mut self, args: args::CreateShardBlock) -> Result<u32> {
         if let Some(shard_chain) = self.shard_chains.get_mut(args.shard_chain_index as usize) {
             let shard_block = ShardBlock::try_from(args.shard_block)?;
 
@@ -232,16 +258,25 @@ impl Simulation {
 
     pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
         if let Some(shard_chain) = self.shard_chains.get(args.shard_chain_index as usize) {
-            if let Some(shard_block) = shard_chain.shard_blocks.get(args.shard_block_index as usize) {
+            if let Some(shard_block) = shard_chain
+                .shard_blocks
+                .get(args.shard_block_index as usize)
+            {
                 Ok(args::ShardBlock::from(shard_block))
             } else {
                 Err(Error::OutOfBounds {
-                    message: format!("the shard chain at index '{}' does not contain a block at index '{}'", args.shard_chain_index, args.shard_block_index),
+                    message: format!(
+                        "the shard chain at index '{}' does not contain a block at index '{}'",
+                        args.shard_chain_index, args.shard_block_index
+                    ),
                 })
             }
         } else {
             Err(Error::OutOfBounds {
-                message: format!("no shard chain exists at index '{}'", args.shard_chain_index),
+                message: format!(
+                    "no shard chain exists at index '{}'",
+                    args.shard_chain_index
+                ),
             })
         }
     }
@@ -252,9 +287,7 @@ pub mod args {
     // Incoming argument values
 
     #[derive(Debug, Default)]
-    pub struct GetSimulationState {
-
-    }
+    pub struct GetSimulationState {}
     #[derive(Debug, Default)]
     pub struct CreateExecutionEnvironment {
         pub execution_environment: ExecutionEnvironment,
@@ -264,9 +297,7 @@ pub mod args {
         pub execution_environment_index: u32,
     }
     #[derive(Debug, Default)]
-    pub struct CreateShardChain {
-
-    }
+    pub struct CreateShardChain {}
     #[derive(Debug, Default)]
     pub struct CreateShardBlock {
         pub shard_chain_index: u32,
@@ -305,12 +336,12 @@ pub mod args {
     }
     impl From<&super::ShardBlock> for ShardBlock {
         fn from(sb: &super::ShardBlock) -> Self {
-            let transactions: Vec<ShardTransaction> = sb.transactions.iter().map(|st| -> ShardTransaction {
-                ShardTransaction::from(st)
-            }).collect();
-            ShardBlock {
-                transactions,
-            }
+            let transactions: Vec<ShardTransaction> = sb
+                .transactions
+                .iter()
+                .map(|st| -> ShardTransaction { ShardTransaction::from(st) })
+                .collect();
+            ShardBlock { transactions }
         }
     }
 
@@ -386,9 +417,7 @@ impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
     type Error = Error;
     fn try_from(ee_args: args::ExecutionEnvironment) -> Result<Self, Self::Error> {
         let wasm_code = base64::decode(&ee_args.base64_encoded_wasm_code).context(Decode)?;
-        Ok(Self {
-            wasm_code,
-        })
+        Ok(Self { wasm_code })
     }
 }
 
@@ -414,18 +443,14 @@ impl ShardBlock {
 impl TryFrom<args::ShardBlock> for ShardBlock {
     type Error = Error;
     fn try_from(sb_args: args::ShardBlock) -> Result<Self, Self::Error> {
-        let transactions: Result<Vec<ShardTransaction>> = sb_args.transactions.iter().map(|sbt_args| -> Result<ShardTransaction> {
-            ShardTransaction::try_from(sbt_args)
-        }).collect();
+        let transactions: Result<Vec<ShardTransaction>> = sb_args
+            .transactions
+            .iter()
+            .map(|sbt_args| -> Result<ShardTransaction> { ShardTransaction::try_from(sbt_args) })
+            .collect();
         match transactions {
-            Err(e) => {
-                return Err(e);
-            },
-            Ok(transactions) => {
-                Ok(ShardBlock {
-                    transactions,
-                })
-            }
+            Err(e) => Err(e),
+            Ok(transactions) => Ok(ShardBlock { transactions }),
         }
     }
 }
@@ -440,10 +465,7 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
     fn try_from(sbt_args: &args::ShardTransaction) -> Result<Self, Self::Error> {
         let data = base64::decode(&sbt_args.base64_encoded_data).context(Decode)?;
         let ee_index = EeIndex(sbt_args.ee_index);
-        Ok(Self {
-            data,
-            ee_index,
-        })
+        Ok(Self { data, ee_index })
     }
 }
 
@@ -463,14 +485,21 @@ mod tests {
             execution_environment: ee_args,
         };
         let result = eth.create_execution_environment(create_ee_args).unwrap();
-        assert_eq!(result, 0, "The first execution environment created should have an index of 0");
+        assert_eq!(
+            result, 0,
+            "The first execution environment created should have an index of 0"
+        );
 
         // Can retrieve the newly-created EE
         let get_ee_args = args::GetExecutionEnvironment {
             execution_environment_index: result,
         };
         let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
-        assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
+        assert_eq!(
+            ee_args_retrieved.base64_encoded_wasm_code,
+            base64::encode(example_wasm_code),
+            "EE wasm code retrieved should match the EE wasm code that was created"
+        );
 
         // Can create and retrieve a second EE
         let example_wasm_code = "some other wasm code here";
@@ -481,12 +510,19 @@ mod tests {
             execution_environment: ee_args,
         };
         let result = eth.create_execution_environment(create_ee_args).unwrap();
-        assert_eq!(result, 1, "The second execution environment created should have an index of 1");
+        assert_eq!(
+            result, 1,
+            "The second execution environment created should have an index of 1"
+        );
         let get_ee_args = args::GetExecutionEnvironment {
             execution_environment_index: result,
         };
         let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
-        assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
+        assert_eq!(
+            ee_args_retrieved.base64_encoded_wasm_code,
+            base64::encode(example_wasm_code),
+            "EE wasm code retrieved should match the EE wasm code that was created"
+        );
     }
     #[test]
     fn getting_ee_at_incorrect_index_should_return_err() {
@@ -502,11 +538,17 @@ mod tests {
         let mut eth = Simulation::new();
         let sc_args = args::CreateShardChain {};
         let result = eth.create_shard_chain(sc_args);
-        assert_eq!(result, 0, "The first shard chain created should have an index of 0");
+        assert_eq!(
+            result, 0,
+            "The first shard chain created should have an index of 0"
+        );
 
         let sc_args = args::CreateShardChain {};
         let result = eth.create_shard_chain(sc_args);
-        assert_eq!(result, 1, "The second shard chain created should have an index of 1");
+        assert_eq!(
+            result, 1,
+            "The second shard chain created should have an index of 1"
+        );
     }
     #[test]
     fn can_get_simulation_state() {
@@ -589,8 +631,14 @@ mod tests {
         };
         let block_index1 = eth.create_shard_block(create_shard_block_args1).unwrap();
         let block_index2 = eth.create_shard_block(create_shard_block_args2).unwrap();
-        assert_eq!(block_index1, 0, "first shard block added should have index of 0");
-        assert_eq!(block_index2, 1, "second shard block added should have index of 1");
+        assert_eq!(
+            block_index1, 0,
+            "first shard block added should have index of 0"
+        );
+        assert_eq!(
+            block_index2, 1,
+            "second shard block added should have index of 1"
+        );
 
         // Get back shard blocks and make sure they look the same as originally
         let get_shard_block_args1 = args::GetShardBlock {
@@ -598,13 +646,21 @@ mod tests {
             shard_block_index: block_index1,
         };
         let mut sb_args_returned = eth.get_shard_block(get_shard_block_args1).unwrap();
-        assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
+        assert_eq!(
+            sb_args_returned,
+            create_example_shard_block_args(ee_index),
+            "value saved should match initial args passed in"
+        );
 
         let get_shard_block_args2 = args::GetShardBlock {
             shard_chain_index: sc_index,
             shard_block_index: block_index2,
         };
         let mut sb_args_returned = eth.get_shard_block(get_shard_block_args2).unwrap();
-        assert_eq!(sb_args_returned, create_example_shard_block_args(ee_index), "value saved should match initial args passed in");
+        assert_eq!(
+            sb_args_returned,
+            create_example_shard_block_args(ee_index),
+            "value saved should match initial args passed in"
+        );
     }
 }
