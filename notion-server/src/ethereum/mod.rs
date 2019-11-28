@@ -27,7 +27,7 @@ pub enum Error {
 enum Operation {
     GetSimulationState(args::GetSimulationState, Sender<args::SimulationState>),
     CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u32>>),
-    GetExecutionEnvironment(args::GetExecutionEnvironment, Sender<args::ExecutionEnvironment>),
+    GetExecutionEnvironment(args::GetExecutionEnvironment, Sender<Result<args::ExecutionEnvironment>>),
     CreateShardChain(args::CreateShardChain, Sender<u32>),
     CreateShardBlock(args::CreateShardBlock, Sender<Result<u32>>),
     GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
@@ -67,8 +67,16 @@ impl Handle123 {
                     let res = self.simulation.create_shard_chain(args);
                     reply.send(res).await;
                 }
+                Operation::GetExecutionEnvironment(args, mut reply) => {
+                    let res = self.simulation.get_execution_environment(args);
+                    reply.send(res).await;
+                }
                 Operation::GetShardBlock(args, mut reply) => {
                     let res = self.simulation.get_shard_block(args);
+                    reply.send(res).await;
+                }
+                Operation::GetSimulationState(args, mut reply) => {
+                    let res = self.simulation.simulation_state(args);
                     reply.send(res).await;
                 }
             }
@@ -76,6 +84,8 @@ impl Handle123 {
 
         Ok(())
     }
+
+    // TODO: Handle the other methods
 
     pub async fn create_shard_chain(&mut self, arg: args::CreateShardChain) -> Result<u32> {
         let (sender, mut receiver) = channel(1);
@@ -85,7 +95,8 @@ impl Handle123 {
         receiver.recv().await.context(Terminated)
     }
 
-    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<u32> {
+    // TODO: could combine the results here so it just returns a single Result<u32> value...
+    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<Result<u32>> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::CreateShardBlock(arg, sender)).await;
@@ -96,7 +107,7 @@ impl Handle123 {
     pub async fn create_execution_environment(
         &mut self,
         arg: args::CreateExecutionEnvironment,
-    ) -> Result<EeIndex> {
+    ) -> Result<Result<u32>> {
         let (sender, mut receiver) = channel(1);
 
         self.sender
@@ -106,7 +117,7 @@ impl Handle123 {
         receiver.recv().await.context(Terminated)
     }
 
-    pub async fn shard_block(&mut self, arg: args::GetShardBlock) -> Result<args::ShardBlock> {
+    pub async fn shard_block(&mut self, arg: args::GetShardBlock) -> Result<Result<args::ShardBlock>> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardBlock(arg, sender)).await;
@@ -129,7 +140,7 @@ impl Simulation {
         }
     }
 
-    pub fn simulation_state(&self) -> args::SimulationState {
+    pub fn simulation_state(&self, args: args::GetSimulationState) -> args::SimulationState {
         args::SimulationState {
             num_execution_environments: self.beacon_chain.execution_environments.len() as u32,
             num_shard_chains: self.shard_chains.len() as u32,
@@ -151,12 +162,14 @@ impl Simulation {
 
     pub fn get_execution_environment(
         &self,
-        execution_environment_index: u32,
-    ) -> Option<args::ExecutionEnvironment> {
-        if let Some(execution_environment) = self.beacon_chain.execution_environments.get(execution_environment_index as usize) {
-            Some(args::ExecutionEnvironment::from(execution_environment))
+        args: args::GetExecutionEnvironment,
+    ) -> Result<args::ExecutionEnvironment> {
+        if let Some(execution_environment) = self.beacon_chain.execution_environments.get(args.execution_environment_index as usize) {
+            Ok(args::ExecutionEnvironment::from(execution_environment))
         } else {
-            None
+            Err(Error::OutOfBounds {
+                message: format!("No execution environment exists at index: {}", args.execution_environment_index),
+            })
         }
     }
 
@@ -173,8 +186,6 @@ impl Simulation {
     pub fn create_shard_block(
         &mut self,
         args: args::CreateShardBlock,
-//        shard_chain_index: u32,
-//        sb_args: args::ShardBlock,
     ) -> Result<u32> {
         if let Some(shard_chain) = self.shard_chains.get_mut(args.shard_chain_index as usize) {
             let shard_block = ShardBlock::try_from(args.shard_block)?;
@@ -441,7 +452,10 @@ mod tests {
         assert_eq!(result, 0, "The first execution environment created should have an index of 0");
 
         // Can retrieve the newly-created EE
-        let ee_args_retrieved = eth.get_execution_environment(result).unwrap();
+        let get_ee_args = args::GetExecutionEnvironment {
+            execution_environment_index: result,
+        };
+        let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
         assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
 
         // Can create and retrieve a second EE
@@ -454,14 +468,20 @@ mod tests {
         };
         let result = eth.create_execution_environment(create_ee_args).unwrap();
         assert_eq!(result, 1, "The second execution environment created should have an index of 1");
-        let ee_args_retrieved = eth.get_execution_environment(result).unwrap();
+        let get_ee_args = args::GetExecutionEnvironment {
+            execution_environment_index: result,
+        };
+        let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
         assert_eq!(ee_args_retrieved.base64_encoded_wasm_code, base64::encode(example_wasm_code),"EE wasm code retrieved should match the EE wasm code that was created");
     }
     #[test]
-    fn getting_ee_at_incorrect_index_should_return_none() {
+    fn getting_ee_at_incorrect_index_should_return_err() {
         let mut eth = Simulation::new();
-        let ee_args_retrieved = eth.get_execution_environment(152);
-        assert!(ee_args_retrieved.is_none());
+        let get_ee_args = args::GetExecutionEnvironment {
+            execution_environment_index: 155512,
+        };
+        let ee_args_retrieved = eth.get_execution_environment(get_ee_args);
+        assert!(ee_args_retrieved.is_err());
     }
     #[test]
     fn can_create_shard_chains() {
@@ -478,14 +498,16 @@ mod tests {
     fn can_get_simulation_state() {
         let mut eth = Simulation::new();
 
-        let general_state = eth.simulation_state();
+        let get_ss_args = args::GetSimulationState {};
+        let general_state = eth.simulation_state(get_ss_args);
         assert_eq!(0, general_state.num_shard_chains);
         assert_eq!(0, general_state.num_execution_environments);
 
         let sc_args = args::CreateShardChain {};
         eth.create_shard_chain(sc_args);
 
-        let general_state = eth.simulation_state();
+        let get_ss_args = args::GetSimulationState {};
+        let general_state = eth.simulation_state(get_ss_args);
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(0, general_state.num_execution_environments);
 
@@ -496,7 +518,8 @@ mod tests {
             execution_environment: ee_args,
         };
         eth.create_execution_environment(create_ee_args);
-        let general_state = eth.simulation_state();
+        let get_ss_args = args::GetSimulationState {};
+        let general_state = eth.simulation_state(get_ss_args);
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(1, general_state.num_execution_environments);
     }
