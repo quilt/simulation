@@ -6,6 +6,10 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
+use ewasm::{RootRuntime, Execute};
+
+use rustc_hex::{FromHex, ToHex};
+
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
 
@@ -226,35 +230,53 @@ impl Simulation {
 
     /// Creates a new shard block and returns the
     /// index of the created shard block
-    pub fn create_shard_block(&mut self, args: args::CreateShardBlock) -> Result<u32> {
-        if let Some(shard_chain) = self.shard_chains.get_mut(args.shard_chain_index as usize) {
-            let shard_block = ShardBlock::try_from(args.shard_block)?;
+    fn create_shard_block(&mut self, sb_args: args::CreateShardBlock) -> u32 {
+        let execution_environment = &self.beacon_chain.execution_environments[sb_args.ee_index as usize];
+        let code = &execution_environment.wasm_code;
 
-            // TODO: Run each transaction (which will update the EE state for that shard)
-            // Questions to answer:
-            //   * What if the decoding of the base64 data string fails? Remove this transaction from the block?  Send back error value as result?
-            //   * What if executing the EE code fails with the given data? (Same options as above?)
-            // Example code from previous brainstorm:
-            //        let transactions = shard_block.transactions
-            //
-            //        for transaction in shard_block.transactions {
-            //            // This executes everything and presumably also updates the EE State on the shard
-            //            let ee = transaction.execution_environment;
-            //            let input_data = transaction.data;
-            //
-            //            let code = self.beacon_chain.get(ee);
-            //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
-            //            runtime.execute(input_data);
-            //        }
+        let mut shard_chain = &mut self.shard_chains[sb_args.shard_index as usize];
+        let pre_state = &shard_chain.execution_environment_state[&EeIndex(sb_args.ee_index)];
 
-            shard_chain.shard_blocks.push(shard_block);
-            Ok((shard_chain.shard_blocks.len() - 1) as u32)
-        } else {
-            Err(Error::OutOfBounds {
-                message: format!("No shard chain exists at index: {}", args.shard_chain_index),
-            })
-        }
+        let mut runtime = RootRuntime::new(&code, &sb_args.data, pre_state.data);
+        let post_root = runtime.execute();
+
+        shard_chain.execution_environment_state.insert(EeIndex(sb_args.ee_index), ExecutionEnvironmentState {
+            data: post_root,
+        });
+
+        0
+
+        // Worth noting that in a real-world use case "sub-transactions" may be merged
+        // into one "combined" transaction before being executed / committed to a block
+        //        let &mut shard_chain = &mut self.shard_chains[shard_index];
+        //
+        //        // Sam to implement: create the transactions and the shard block and run the transactions
+        //        let shard_block = ShardBlock::new(Vec::new());
+        //
+        //        shard_chain.shard_blocks.push(shard_block);
+        //        (shard_chain.shard_blocks.len() - 1) as u32
+
+        // unimplemented!();
+
+        //        let transactions = block.transactions
+        //
+        //        for transaction in block.transactions {
+        //            // This executes everything and presumably also updates the EE State on the shard
+        //            let ee = transaction.execution_environment;
+        //            let input_data = transaction.data;
+        //
+        //            let code = self.beacon_chain.get(ee);
+        //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
+        //            runtime.execute(input_data);
+        //        }
     }
+
+    /* Getter methods still needed
+        Beacon State
+        Shard State
+        Transactions (do we want to store EE state per shard before / after each transaction?
+
+    */
 
     pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
         if let Some(shard_chain) = self.shard_chains.get(args.shard_chain_index as usize) {
@@ -298,10 +320,12 @@ pub mod args {
     }
     #[derive(Debug, Default)]
     pub struct CreateShardChain {}
+
     #[derive(Debug, Default)]
     pub struct CreateShardBlock {
-        pub shard_chain_index: u32,
-        pub shard_block: ShardBlock,
+        pub shard_index: u32,
+        pub ee_index: u32,
+        pub data: Vec<u8>,
     }
     #[derive(Debug, Default)]
     pub struct GetShardBlock {
@@ -410,7 +434,7 @@ pub struct EeIndex(u32);
 // Does NOT include shard-specific EE state
 #[derive(Debug)]
 struct ExecutionEnvironment {
-    wasm_code: Vec<u8>,
+    pub wasm_code: Vec<u8>,
 }
 
 impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
@@ -662,5 +686,71 @@ mod tests {
             create_example_shard_block_args(ee_index),
             "value saved should match initial args passed in"
         );
+    }
+
+    #[derive(Default, PartialEq, Copy, Clone, Debug)]
+    struct Bytes32 {
+        pub bytes: [u8; 32],
+    }
+
+    fn parse_bytes(raw_str: &str) -> [u8; 32] {
+        let hex = raw_str.from_hex().unwrap();
+        let mut ret = Bytes32::default();
+        ret.bytes.copy_from_slice(&hex[..]);
+        ret.bytes
+    }
+
+    #[test]
+    fn produce_helloworld_block() {
+        let test_name = "helloworld";
+        let wasm_file = "/Users/adietrichs/Developer/eth2/ewasm/scout/scripts/helloworld/target/wasm32-unknown-unknown/release/phase2_helloworld.wasm";
+        let ee_code = "0000000000000000000000000000000000000000000000000000000000000000";
+        let data = "";
+
+        let mut simulation = Simulation::new().0;
+        let wasm_code = std::fs::read(wasm_file).unwrap();
+        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
+            wasm_code: wasm_code
+        }));
+        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
+        let mut shard_chain = &mut simulation.shard_chains[0];
+        shard_chain.execution_environment_state.insert(EeIndex(0), ExecutionEnvironmentState{
+            data: parse_bytes(ee_code),
+        });
+        simulation.create_shard_block(args::CreateShardBlock{
+            shard_index: 0,
+            ee_index: 0,
+            data: data.from_hex().unwrap(),
+        });
+        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
+
+        println!("{}: {}", test_name, post_state.data.to_hex());
+    }
+
+    #[test]
+    fn produce_bazaar_block() {
+        let test_name = "bazaar";
+        let wasm_file = "/Users/adietrichs/Developer/eth2/ewasm/scout/scripts/bazaar/target/wasm32-unknown-unknown/release/phase2_bazaar.wasm";
+        let ee_code = "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4";
+        let data = "5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000";
+
+        let mut simulation = Simulation::new().0;
+        let wasm_code = std::fs::read(wasm_file).unwrap();
+        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
+            wasm_code: wasm_code
+        }));
+        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
+        let mut shard_chain = &mut simulation.shard_chains[0];
+        shard_chain.execution_environment_state.insert(EeIndex(0), ExecutionEnvironmentState{
+            data: parse_bytes(ee_code),
+        });
+        simulation.create_shard_block(args::CreateShardBlock{
+            shard_index: 0,
+            ee_index: 0,
+            data: data.from_hex().unwrap(),
+        });
+        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
+
+        println!("{}: {}", test_name, post_state.data.to_hex());
     }
 }
