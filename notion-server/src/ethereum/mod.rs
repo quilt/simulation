@@ -34,13 +34,13 @@ enum Operation {
 }
 
 #[derive(Debug)]
-pub struct Handle123 {
+pub struct Handle {
     receiver: Receiver<Operation>,
     sender: Sender<Operation>,
     simulation: Simulation,
 }
 
-impl Handle123 {
+impl Handle {
     pub fn new(simulation: Simulation) -> Self {
         let (sender, receiver) = channel(1);
 

@@ -85,7 +85,7 @@ impl Notion {
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
         let simulation = ethereum::Simulation::new();
-        let handle = ethereum::Handle123::new(simulation);
+        let handle = ethereum::Handle::new(simulation);
 
         let (sender, receiver) = oneshot();
 
