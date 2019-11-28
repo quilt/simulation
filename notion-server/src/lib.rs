@@ -84,14 +84,15 @@ impl Notion {
 
     /// Start the simulation server and wait for it to finish.
     pub fn run(&self) -> Result<()> {
-        let (sim, _) = ethereum::Simulation::new();
+        let simulation = ethereum::Simulation::new();
+        let handle = ethereum::Handle::new(simulation);
 
         let (sender, receiver) = oneshot();
 
         let mut spawner = Runtime::new().context(error::Tokio)?;
 
         spawner.spawn(async {
-            let result = sim.run().await;
+            let result = handle.run().await;
             sender.send(result).unwrap();
         });
 
