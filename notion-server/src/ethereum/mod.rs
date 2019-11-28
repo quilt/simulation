@@ -230,45 +230,39 @@ impl Simulation {
 
     /// Creates a new shard block and returns the
     /// index of the created shard block
-    fn create_shard_block(&mut self, sb_args: args::CreateShardBlock) -> u32 {
-        let execution_environment = &self.beacon_chain.execution_environments[sb_args.ee_index as usize];
-        let code = &execution_environment.wasm_code;
+    fn create_shard_block(&mut self, args: args::CreateShardBlock) -> Result<u32> {
+        let mut shard_chain = self.shard_chains.get_mut(args.shard_chain_index as usize).context(OutOfBounds {
+            message: format!("No shard chain exists at index: {}", args.shard_chain_index),
+        })?;
 
-        let mut shard_chain = &mut self.shard_chains[sb_args.shard_index as usize];
-        let pre_state = &shard_chain.execution_environment_state[&EeIndex(sb_args.ee_index)];
+        let mut transactions = Vec::with_capacity(args.shard_block.transactions.len());
 
-        let mut runtime = RootRuntime::new(&code, &sb_args.data, pre_state.data);
-        let post_root = runtime.execute();
+        for transaction in args.shard_block.transactions {
+            let execution_environment = self.beacon_chain.execution_environments.get(transaction.ee_index as usize).context(OutOfBounds {
+                message: format!("No execution environment exists at index: {}", transaction.ee_index),
+            })?;
+            let code = &execution_environment.wasm_code;
 
-        shard_chain.execution_environment_state.insert(EeIndex(sb_args.ee_index), ExecutionEnvironmentState {
-            data: post_root,
-        });
+            let pre_state = shard_chain.execution_environment_state.get(&EeIndex(transaction.ee_index)).unwrap_or(&execution_environment.initial_shard_state);
+            let data = base64::decode(&transaction.base64_encoded_data).context(Decode)?;
+            let mut runtime = RootRuntime::new(&code, &data, pre_state.data);
+            let post_root = runtime.execute();
+            drop(runtime);
 
-        0
+            shard_chain.execution_environment_state.insert(EeIndex(transaction.ee_index), ExecutionEnvironmentState {
+                data: post_root,
+            });
 
-        // Worth noting that in a real-world use case "sub-transactions" may be merged
-        // into one "combined" transaction before being executed / committed to a block
-        //        let &mut shard_chain = &mut self.shard_chains[shard_index];
-        //
-        //        // Sam to implement: create the transactions and the shard block and run the transactions
-        //        let shard_block = ShardBlock::new(Vec::new());
-        //
-        //        shard_chain.shard_blocks.push(shard_block);
-        //        (shard_chain.shard_blocks.len() - 1) as u32
+            transactions.push(ShardTransaction {
+                data,
+                ee_index: EeIndex(transaction.ee_index)
+            });
+        }
 
-        // unimplemented!();
+        let shard_block = ShardBlock::new(transactions);
 
-        //        let transactions = block.transactions
-        //
-        //        for transaction in block.transactions {
-        //            // This executes everything and presumably also updates the EE State on the shard
-        //            let ee = transaction.execution_environment;
-        //            let input_data = transaction.data;
-        //
-        //            let code = self.beacon_chain.get(ee);
-        //            let runtime = RootRuntime::new(&code, shard_ee_state_or_something_similar);
-        //            runtime.execute(input_data);
-        //        }
+        shard_chain.shard_blocks.push(shard_block);
+        Ok((shard_chain.shard_blocks.len() - 1) as u32)
     }
 
     /* Getter methods still needed
@@ -323,9 +317,8 @@ pub mod args {
 
     #[derive(Debug, Default)]
     pub struct CreateShardBlock {
-        pub shard_index: u32,
-        pub ee_index: u32,
-        pub data: Vec<u8>,
+        pub shard_chain_index: u32,
+        pub shard_block: ShardBlock,
     }
     #[derive(Debug, Default)]
     pub struct GetShardBlock {
@@ -338,13 +331,16 @@ pub mod args {
     #[derive(Debug, Default)]
     pub struct ExecutionEnvironment {
         pub base64_encoded_wasm_code: String,
+        pub base64_encoded_initial_state: String,
     }
 
     impl From<&super::ExecutionEnvironment> for ExecutionEnvironment {
         fn from(ee: &super::ExecutionEnvironment) -> Self {
             let base64_encoded_wasm_code = base64::encode(&ee.wasm_code);
+            let base64_encoded_initial_state = base64::encode(&ee.initial_shard_state.data);
             Self {
                 base64_encoded_wasm_code,
+                base64_encoded_initial_state,
             }
         }
     }
@@ -427,6 +423,19 @@ impl ShardChain {
     }
 }
 
+#[derive(Default, PartialEq, Copy, Clone, Debug)]
+struct Bytes32 {
+    pub bytes: [u8; 32],
+}
+
+impl Bytes32 {
+    fn from(bytes: &[u8]) -> [u8; 32] {
+        let mut ret = Self::default();
+        ret.bytes.copy_from_slice(&bytes[..]);
+        ret.bytes
+    }
+}
+
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct EeIndex(u32);
 
@@ -435,13 +444,15 @@ pub struct EeIndex(u32);
 #[derive(Debug)]
 struct ExecutionEnvironment {
     pub wasm_code: Vec<u8>,
+    pub initial_shard_state: ExecutionEnvironmentState,
 }
 
 impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
     type Error = Error;
     fn try_from(ee_args: args::ExecutionEnvironment) -> Result<Self, Self::Error> {
         let wasm_code = base64::decode(&ee_args.base64_encoded_wasm_code).context(Decode)?;
-        Ok(Self { wasm_code })
+        let initial_shard_state_vec = base64::decode(&ee_args.base64_encoded_initial_state).context(Decode)?;
+        Ok(Self { wasm_code, initial_shard_state: ExecutionEnvironmentState{ data: Bytes32::from(&initial_shard_state_vec) } })
     }
 }
 
@@ -496,6 +507,8 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
     #[test]
     fn can_create_and_get_execution_environments() {
         let mut eth = Simulation::new();
@@ -504,6 +517,7 @@ mod tests {
         let example_wasm_code = "some wasm code here";
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
+            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -529,6 +543,7 @@ mod tests {
         let example_wasm_code = "some other wasm code here";
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
+            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -593,6 +608,7 @@ mod tests {
 
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode("wasm msaw"),
+            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -627,9 +643,10 @@ mod tests {
         let mut eth = Simulation::new();
 
         // Add EE
-        let example_wasm_code = "some wasm code here";
+        let example_wasm_code: &[u8] = include_bytes!("../../tests/do_nothing.wasm");
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
+            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -688,69 +705,47 @@ mod tests {
         );
     }
 
-    #[derive(Default, PartialEq, Copy, Clone, Debug)]
-    struct Bytes32 {
-        pub bytes: [u8; 32],
-    }
+    fn produce_block(test_name: &str, wasm_code: &[u8], initial_state: &str, data: &str, expected_end_state: &str) {
+        let mut simulation = Simulation::new();
 
-    fn parse_bytes(raw_str: &str) -> [u8; 32] {
-        let hex = raw_str.from_hex().unwrap();
-        let mut ret = Bytes32::default();
-        ret.bytes.copy_from_slice(&hex[..]);
-        ret.bytes
+        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
+            execution_environment: args::ExecutionEnvironment{
+                base64_encoded_wasm_code: base64::encode(wasm_code),
+                base64_encoded_initial_state: base64::encode(&initial_state.from_hex().unwrap()),
+            }
+        }).unwrap());
+
+        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
+
+        assert_eq!(0, simulation.create_shard_block(args::CreateShardBlock{
+            shard_chain_index: 0,
+            shard_block: args::ShardBlock{
+                transactions: vec![args::ShardTransaction{
+                    base64_encoded_data: base64::encode(&data.from_hex().unwrap()),
+                    ee_index: 0,
+                }]
+            }
+        }).unwrap());
+
+        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
+        assert_eq!(post_state.data, Bytes32::from(&expected_end_state.from_hex().unwrap()));
     }
 
     #[test]
-    fn produce_helloworld_block() {
-        let test_name = "helloworld";
-        let wasm_file = "/Users/adietrichs/Developer/eth2/ewasm/scout/scripts/helloworld/target/wasm32-unknown-unknown/release/phase2_helloworld.wasm";
-        let ee_code = "0000000000000000000000000000000000000000000000000000000000000000";
-        let data = "";
-
-        let mut simulation = Simulation::new().0;
-        let wasm_code = std::fs::read(wasm_file).unwrap();
-        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
-            wasm_code: wasm_code
-        }));
-        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
-        let mut shard_chain = &mut simulation.shard_chains[0];
-        shard_chain.execution_environment_state.insert(EeIndex(0), ExecutionEnvironmentState{
-            data: parse_bytes(ee_code),
-        });
-        simulation.create_shard_block(args::CreateShardBlock{
-            shard_index: 0,
-            ee_index: 0,
-            data: data.from_hex().unwrap(),
-        });
-        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
-
-        println!("{}: {}", test_name, post_state.data.to_hex());
-    }
-
-    #[test]
-    fn produce_bazaar_block() {
-        let test_name = "bazaar";
-        let wasm_file = "/Users/adietrichs/Developer/eth2/ewasm/scout/scripts/bazaar/target/wasm32-unknown-unknown/release/phase2_bazaar.wasm";
-        let ee_code = "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4";
-        let data = "5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000";
-
-        let mut simulation = Simulation::new().0;
-        let wasm_code = std::fs::read(wasm_file).unwrap();
-        assert_eq!(0, simulation.create_execution_environment(args::CreateExecutionEnvironment{
-            wasm_code: wasm_code
-        }));
-        assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain{}));
-        let mut shard_chain = &mut simulation.shard_chains[0];
-        shard_chain.execution_environment_state.insert(EeIndex(0), ExecutionEnvironmentState{
-            data: parse_bytes(ee_code),
-        });
-        simulation.create_shard_block(args::CreateShardBlock{
-            shard_index: 0,
-            ee_index: 0,
-            data: data.from_hex().unwrap(),
-        });
-        let post_state = simulation.shard_chains[0].execution_environment_state.get(&EeIndex(0)).unwrap();
-
-        println!("{}: {}", test_name, post_state.data.to_hex());
+    fn run_scout_tests() {
+        produce_block(
+            "helloworld",
+            include_bytes!("../../tests/phase2_helloworld.wasm"),
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            "",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        );
+        produce_block(
+            "bazaar",
+            include_bytes!("../../tests/phase2_bazaar.wasm"),
+            "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4",
+            "5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000",
+            "29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc",
+        );
     }
 }
