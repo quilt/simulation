@@ -733,33 +733,35 @@ mod tests {
     ) {
         let mut simulation = Simulation::new();
 
+        let execution_environment = args::ExecutionEnvironment {
+            base64_encoded_wasm_code: base64::encode(wasm_code),
+            base64_encoded_initial_state: base64::encode(
+                &Vec::from_hex(initial_state).unwrap()
+            ),
+        };
         assert_eq!(
             0,
             simulation
                 .create_execution_environment(args::CreateExecutionEnvironment {
-                    execution_environment: args::ExecutionEnvironment {
-                        base64_encoded_wasm_code: base64::encode(wasm_code),
-                        base64_encoded_initial_state: base64::encode(
-                            &Vec::from_hex(initial_state).unwrap()
-                        ),
-                    }
+                    execution_environment,
                 })
                 .unwrap()
         );
 
         assert_eq!(0, simulation.create_shard_chain(args::CreateShardChain {}));
 
+        let shard_block = args::ShardBlock {
+            transactions: vec![args::ShardTransaction {
+                base64_encoded_data: base64::encode(&Vec::from_hex(data).unwrap()),
+                ee_index: 0,
+            }]
+        };
         assert_eq!(
             0,
             simulation
                 .create_shard_block(args::CreateShardBlock {
                     shard_chain_index: 0,
-                    shard_block: args::ShardBlock {
-                        transactions: vec![args::ShardTransaction {
-                            base64_encoded_data: base64::encode(&Vec::from_hex(data).unwrap()),
-                            ee_index: 0,
-                        }]
-                    }
+                    shard_block,
                 })
                 .unwrap()
         );
@@ -775,13 +777,17 @@ mod tests {
     }
 
     #[test]
-    fn run_scout_tests() {
+    fn run_scout_helloworld() {
         produce_block(
             include_bytes!("../../tests/phase2_helloworld.wasm"),
             "0000000000000000000000000000000000000000000000000000000000000000",
             "",
             "0000000000000000000000000000000000000000000000000000000000000000",
         );
+    }
+
+    #[test]
+    fn run_scout_bazaar() {
         produce_block(
             include_bytes!("../../tests/phase2_bazaar.wasm"),
             "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4",
