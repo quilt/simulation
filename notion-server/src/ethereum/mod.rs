@@ -8,7 +8,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use ewasm::{Execute, RootRuntime};
 
-use rustc_hex::{FromHex, ToHex};
+use hex::{FromHex, ToHex};
 
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
@@ -726,7 +726,6 @@ mod tests {
     }
 
     fn produce_block(
-        test_name: &str,
         wasm_code: &[u8],
         initial_state: &str,
         data: &str,
@@ -741,7 +740,7 @@ mod tests {
                     execution_environment: args::ExecutionEnvironment {
                         base64_encoded_wasm_code: base64::encode(wasm_code),
                         base64_encoded_initial_state: base64::encode(
-                            &initial_state.from_hex().unwrap()
+                            &Vec::from_hex(initial_state).unwrap()
                         ),
                     }
                 })
@@ -757,7 +756,7 @@ mod tests {
                     shard_chain_index: 0,
                     shard_block: args::ShardBlock {
                         transactions: vec![args::ShardTransaction {
-                            base64_encoded_data: base64::encode(&data.from_hex().unwrap()),
+                            base64_encoded_data: base64::encode(&Vec::from_hex(data).unwrap()),
                             ee_index: 0,
                         }]
                     }
@@ -771,21 +770,19 @@ mod tests {
             .unwrap();
         assert_eq!(
             post_state.data,
-            Bytes32::from(&expected_end_state.from_hex().unwrap())
+            Bytes32::from(&Vec::from_hex(expected_end_state).unwrap())
         );
     }
 
     #[test]
     fn run_scout_tests() {
         produce_block(
-            "helloworld",
             include_bytes!("../../tests/phase2_helloworld.wasm"),
             "0000000000000000000000000000000000000000000000000000000000000000",
             "",
             "0000000000000000000000000000000000000000000000000000000000000000",
         );
         produce_block(
-            "bazaar",
             include_bytes!("../../tests/phase2_bazaar.wasm"),
             "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4",
             "5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000",

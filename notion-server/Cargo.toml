@@ -16,4 +16,4 @@ snafu = "0.6.0"
 structopt = "0.3.4"
 tokio = { version = "0.2.0", features = ["sync", "io-util", "rt-core"] }
 ewasm = "0.2.2"
-rustc-hex = "1.0"
+hex = "0.4.0"
