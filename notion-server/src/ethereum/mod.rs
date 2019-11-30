@@ -23,7 +23,7 @@ pub enum Error {
     },
     /// Operation was cancelled because the simulation is shutting down.
     Terminated,
-    InvalidBytes32
+    InvalidBytes32,
 }
 
 #[derive(Debug)]
@@ -446,13 +446,11 @@ impl ToBytes32 for Vec<u8> {
             let mut ret: [u8; 32] = [0; 32];
             ret.copy_from_slice(&self[..]);
             Ok(ret)
-        }
-        else {
+        } else {
             Err(Error::InvalidBytes32)
         }
     }
 }
-
 
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct EeIndex(u32);
@@ -531,8 +529,8 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
     use hex::FromHex;
+    use std::path::Path;
 
     #[test]
     fn can_create_and_get_execution_environments() {
@@ -730,19 +728,12 @@ mod tests {
         );
     }
 
-    fn produce_block(
-        wasm_code: &[u8],
-        initial_state: &str,
-        data: &str,
-        expected_end_state: &str,
-    ) {
+    fn produce_block(wasm_code: &[u8], initial_state: &str, data: &str, expected_end_state: &str) {
         let mut simulation = Simulation::new();
 
         let execution_environment = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(wasm_code),
-            base64_encoded_initial_state: base64::encode(
-                &Vec::from_hex(initial_state).unwrap()
-            ),
+            base64_encoded_initial_state: base64::encode(&Vec::from_hex(initial_state).unwrap()),
         };
         assert_eq!(
             0,
@@ -759,7 +750,7 @@ mod tests {
             transactions: vec![args::ShardTransaction {
                 base64_encoded_data: base64::encode(&Vec::from_hex(data).unwrap()),
                 ee_index: 0,
-            }]
+            }],
         };
         assert_eq!(
             0,
@@ -776,10 +767,7 @@ mod tests {
             .get(&EeIndex(0))
             .unwrap();
         let expected_state: [u8; 32] = FromHex::from_hex(expected_end_state).unwrap();
-        assert_eq!(
-            expected_state,
-            post_state.data
-        );
+        assert_eq!(expected_state, post_state.data);
     }
 
     #[test]
