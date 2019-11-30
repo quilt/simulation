@@ -8,8 +8,6 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use ewasm::{Execute, RootRuntime};
 
-use hex::{FromHex, ToHex};
-
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
 
@@ -25,6 +23,7 @@ pub enum Error {
     },
     /// Operation was cancelled because the simulation is shutting down.
     Terminated,
+    InvalidBytes32
 }
 
 #[derive(Debug)]
@@ -437,18 +436,23 @@ impl ShardChain {
     }
 }
 
-#[derive(Default, PartialEq, Copy, Clone, Debug)]
-struct Bytes32 {
-    pub bytes: [u8; 32],
+trait ToBytes32 {
+    fn to_bytes32(&self) -> Result<[u8; 32]>;
 }
 
-impl Bytes32 {
-    fn from(bytes: &[u8]) -> [u8; 32] {
-        let mut ret = Self::default();
-        ret.bytes.copy_from_slice(&bytes[..]);
-        ret.bytes
+impl ToBytes32 for Vec<u8> {
+    fn to_bytes32(&self) -> Result<[u8; 32]> {
+        if self.len() == 32 {
+            let mut ret: [u8; 32] = [0; 32];
+            ret.copy_from_slice(&self[..]);
+            Ok(ret)
+        }
+        else {
+            Err(Error::InvalidBytes32)
+        }
     }
 }
+
 
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct EeIndex(u32);
@@ -470,7 +474,7 @@ impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
         Ok(Self {
             wasm_code,
             initial_shard_state: ExecutionEnvironmentState {
-                data: Bytes32::from(&initial_shard_state_vec),
+                data: initial_shard_state_vec.to_bytes32()?,
             },
         })
     }
@@ -528,6 +532,7 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 mod tests {
     use super::*;
     use std::path::Path;
+    use hex::FromHex;
 
     #[test]
     fn can_create_and_get_execution_environments() {
@@ -537,7 +542,7 @@ mod tests {
         let example_wasm_code = "some wasm code here";
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
+            base64_encoded_initial_state: base64::encode(&[0; 32]),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -563,7 +568,7 @@ mod tests {
         let example_wasm_code = "some other wasm code here";
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
+            base64_encoded_initial_state: base64::encode(&[0; 32]),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -628,7 +633,7 @@ mod tests {
 
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode("wasm msaw"),
-            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
+            base64_encoded_initial_state: base64::encode(&[0; 32]),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -666,7 +671,7 @@ mod tests {
         let example_wasm_code: &[u8] = include_bytes!("../../tests/do_nothing.wasm");
         let ee_args = args::ExecutionEnvironment {
             base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&Bytes32::default().bytes),
+            base64_encoded_initial_state: base64::encode(&[0; 32]),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -770,9 +775,10 @@ mod tests {
             .execution_environment_state
             .get(&EeIndex(0))
             .unwrap();
+        let expected_state: [u8; 32] = FromHex::from_hex(expected_end_state).unwrap();
         assert_eq!(
-            post_state.data,
-            Bytes32::from(&Vec::from_hex(expected_end_state).unwrap())
+            expected_state,
+            post_state.data
         );
     }
 
