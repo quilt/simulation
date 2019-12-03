@@ -459,8 +459,8 @@ pub struct EeIndex(u32);
 // Does NOT include shard-specific EE state
 #[derive(Debug)]
 struct ExecutionEnvironment {
-    pub wasm_code: Vec<u8>,
-    pub initial_shard_state: ExecutionEnvironmentState,
+    wasm_code: Vec<u8>,
+    initial_shard_state: ExecutionEnvironmentState,
 }
 
 impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
