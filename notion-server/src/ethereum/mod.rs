@@ -12,9 +12,27 @@ use ewasm::{Execute, RootRuntime};
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fmt;
 
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
+
+#[derive(Debug)]
+pub enum WhatBound {
+    ExecutionEnvironment,
+    ShardChain,
+    ShardBlock(u32),
+}
+
+impl fmt::Display for WhatBound {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            WhatBound::ExecutionEnvironment => write!(f, "execution environment"),
+            WhatBound::ShardChain => write!(f, "shard chain"),
+            WhatBound::ShardBlock(shard) => write!(f, "block on shard {}", shard),
+        }
+    }
+}
 
 /// Errors arising from the simulation.
 #[derive(Debug, Snafu)]
@@ -23,9 +41,13 @@ pub enum Error {
         backtrace: Backtrace,
         source: base64::DecodeError,
     },
+
+    #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds {
-        message: String,
+        what: WhatBound,
+        index: usize,
     },
+
     /// Operation was cancelled because the simulation is shutting down.
     Terminated,
     InvalidBytes32,
@@ -69,20 +91,16 @@ impl Simulation {
         &self,
         args: args::GetExecutionEnvironment,
     ) -> Result<args::ExecutionEnvironment> {
-        if let Some(execution_environment) = self
+        let execution_environment = self
             .beacon_chain
             .execution_environments
             .get(args.execution_environment_index as usize)
-        {
-            Ok(args::ExecutionEnvironment::from(execution_environment))
-        } else {
-            Err(Error::OutOfBounds {
-                message: format!(
-                    "No execution environment exists at index: {}",
-                    args.execution_environment_index
-                ),
-            })
-        }
+            .context(OutOfBounds {
+                what: WhatBound::ExecutionEnvironment,
+                index: args.execution_environment_index as usize,
+            })?;
+
+        Ok(args::ExecutionEnvironment::from(execution_environment))
     }
 
     /// Returns the index of the newly added shard chain
@@ -100,7 +118,8 @@ impl Simulation {
             .shard_chains
             .get_mut(args.shard_chain_index as usize)
             .context(OutOfBounds {
-                message: format!("No shard chain exists at index: {}", args.shard_chain_index),
+                what: WhatBound::ShardChain,
+                index: args.shard_chain_index as usize,
             })?;
 
         let mut transactions = Vec::with_capacity(args.shard_block.transactions.len());
@@ -111,10 +130,8 @@ impl Simulation {
                 .execution_environments
                 .get(transaction.ee_index as usize)
                 .context(OutOfBounds {
-                    message: format!(
-                        "No execution environment exists at index: {}",
-                        transaction.ee_index
-                    ),
+                    what: WhatBound::ExecutionEnvironment,
+                    index: transaction.ee_index as usize,
                 })?;
             let code = &execution_environment.wasm_code;
 
@@ -152,28 +169,23 @@ impl Simulation {
     */
 
     pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
-        if let Some(shard_chain) = self.shard_chains.get(args.shard_chain_index as usize) {
-            if let Some(shard_block) = shard_chain
-                .shard_blocks
-                .get(args.shard_block_index as usize)
-            {
-                Ok(args::ShardBlock::from(shard_block))
-            } else {
-                Err(Error::OutOfBounds {
-                    message: format!(
-                        "the shard chain at index '{}' does not contain a block at index '{}'",
-                        args.shard_chain_index, args.shard_block_index
-                    ),
-                })
-            }
-        } else {
-            Err(Error::OutOfBounds {
-                message: format!(
-                    "no shard chain exists at index '{}'",
-                    args.shard_chain_index
-                ),
-            })
-        }
+        let shard_chain = self
+            .shard_chains
+            .get(args.shard_chain_index as usize)
+            .context(OutOfBounds {
+                what: WhatBound::ShardChain,
+                index: args.shard_chain_index as usize,
+            })?;
+
+        let shard_block = shard_chain
+            .shard_blocks
+            .get(args.shard_block_index as usize)
+            .context(OutOfBounds {
+                index: args.shard_block_index as usize,
+                what: WhatBound::ShardBlock(args.shard_chain_index),
+            })?;
+
+        Ok(args::ShardBlock::from(shard_block))
     }
 }
 
