@@ -16,8 +16,10 @@ snafu = "0.6.0"
 structopt = "0.3.4"
 tokio = { version = "0.2.0", features = ["sync", "io-util", "rt-core", "blocking", "macros"] }
 rocket = "0.4.2"
+rocket_contrib = "0.4.2"
 futures-util = "0.3.1"
 ewasm = "0.2.2"
+serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 hex = "0.4.0"
