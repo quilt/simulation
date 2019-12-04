@@ -59,7 +59,7 @@ pub struct NotionBuilder {
 impl NotionBuilder {
     /// Create a new `Notion` instance from the configuration in this builder.
     pub fn build(self) -> Notion {
-        Notion {}
+        Notion { bind: self.bind }
     }
 
     /// Set the local address the server will listen to.
@@ -81,7 +81,9 @@ impl Default for NotionBuilder {
 
 /// A server that simulates Ethereum 2.0's phase two.
 #[derive(Debug)]
-pub struct Notion {}
+pub struct Notion {
+    bind: SocketAddr,
+}
 
 impl Notion {
     /// Create a builder for a `Notion` server.
@@ -90,17 +92,18 @@ impl Notion {
     }
 
     /// Start the simulation server and wait for it to finish.
-    pub fn run(&self) -> Result<()> {
+    pub fn run(self) -> Result<()> {
         self.async_run()
     }
 
     #[tokio::main]
-    async fn async_run(&self) -> Result<()> {
+    async fn async_run(self) -> Result<()> {
         let simulation = ethereum::Simulation::new();
         let (dispatch, handle) = ethereum::Dispatch::new(simulation);
 
         let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Ethereum)));
-        let api_run = tokio::task::spawn_blocking(|| api::run(handle).context(error::Api));
+        let api_run =
+            tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
 
         pin_mut!(eth_run);
         pin_mut!(api_run);

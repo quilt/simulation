@@ -189,20 +189,21 @@ impl Simulation {
     }
 }
 
+/// Incoming arguments and return values.
 pub mod args {
-
-    // Incoming argument values
-
     #[derive(Debug, Default)]
     pub struct GetSimulationState {}
+
     #[derive(Debug, Default)]
     pub struct CreateExecutionEnvironment {
         pub execution_environment: ExecutionEnvironment,
     }
+
     #[derive(Debug, Default)]
     pub struct GetExecutionEnvironment {
         pub execution_environment_index: u32,
     }
+
     #[derive(Debug, Default)]
     pub struct CreateShardChain {}
 
