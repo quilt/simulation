@@ -1,8 +1,10 @@
-use crate::ethereum::Handle;
+use crate::ethereum::{args, Handle, Result as EthResult};
 use crate::Notion;
 
 use rocket::config;
 use rocket::{get, routes, State};
+
+use rocket_contrib::json::Json;
 
 use snafu::{ResultExt, Snafu};
 
@@ -23,16 +25,30 @@ pub fn run(notion: &Notion, handle: Handle) -> Result<()> {
         .context(Config)?;
 
     rocket::custom(config)
-        .mount("/", routes![hello])
+        .mount("/", routes![simulation_state, show_execution_environment,])
         .manage(handle)
         .launch();
 
     Ok(())
 }
 
+#[tokio::main] // TODO: Check efficiency of tokio::main. Does it create or reuse thread pools?
 #[get("/")]
-fn hello(_simulation: State<Handle>) -> String {
-    // TODO: This is where we can interact with the simulation.
+async fn simulation_state(handle: State<Handle>) -> EthResult<Json<args::SimulationState>> {
+    let state = handle.clone().simulation_state().await?;
+    Ok(Json(state))
+}
 
-    "Hello, World".into()
+#[tokio::main]
+#[get("/beacon/execution-environments/<index>")]
+async fn show_execution_environment(
+    index: u32,
+    handle: State<Handle>,
+) -> EthResult<Json<args::ExecutionEnvironment>> {
+    let arg = args::GetExecutionEnvironment {
+        execution_environment_index: index,
+    };
+
+    let ee = handle.clone().execution_environment(arg).await?;
+    Ok(Json(ee))
 }
