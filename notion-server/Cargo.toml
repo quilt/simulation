@@ -14,7 +14,9 @@ edition = "2018"
 base64 = "0.11.0"
 snafu = "0.6.0"
 structopt = "0.3.4"
-tokio = { version = "0.2.0", features = ["sync", "io-util", "rt-core"] }
+tokio = { version = "0.2.0", features = ["sync", "io-util", "rt-core", "blocking", "macros"] }
+rocket = "0.4.2"
+futures-util = "0.3.1"
 ewasm = "0.2.2"
 
 [dev-dependencies]
