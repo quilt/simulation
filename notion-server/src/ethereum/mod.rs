@@ -12,9 +12,27 @@ use ewasm::{Execute, RootRuntime};
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fmt;
 
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
+
+#[derive(Debug)]
+pub enum WhatBound {
+    ExecutionEnvironment,
+    ShardChain,
+    ShardBlock(u32),
+}
+
+impl fmt::Display for WhatBound {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            WhatBound::ExecutionEnvironment => write!(f, "execution environment"),
+            WhatBound::ShardChain => write!(f, "shard chain"),
+            WhatBound::ShardBlock(shard) => write!(f, "block on shard {}", shard),
+        }
+    }
+}
 
 /// Errors arising from the simulation.
 #[derive(Debug, Snafu)]
@@ -23,9 +41,13 @@ pub enum Error {
         backtrace: Backtrace,
         source: base64::DecodeError,
     },
+
+    #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds {
-        message: String,
+        what: WhatBound,
+        index: usize,
     },
+
     /// Operation was cancelled because the simulation is shutting down.
     Terminated,
     InvalidBytes32,
@@ -45,7 +67,7 @@ impl Simulation {
         }
     }
 
-    pub fn simulation_state(&self, args: args::GetSimulationState) -> args::SimulationState {
+    pub fn simulation_state(&self) -> args::SimulationState {
         args::SimulationState {
             num_execution_environments: self.beacon_chain.execution_environments.len() as u32,
             num_shard_chains: self.shard_chains.len() as u32,
@@ -58,7 +80,7 @@ impl Simulation {
         &mut self,
         args: args::CreateExecutionEnvironment,
     ) -> Result<u32> {
-        let execution_environment = ExecutionEnvironment::try_from(args.execution_environment)?;
+        let execution_environment = ExecutionEnvironment::from(args.execution_environment);
         let EeIndex(ee_index) = self
             .beacon_chain
             .add_execution_environment(execution_environment);
@@ -69,20 +91,16 @@ impl Simulation {
         &self,
         args: args::GetExecutionEnvironment,
     ) -> Result<args::ExecutionEnvironment> {
-        if let Some(execution_environment) = self
+        let execution_environment = self
             .beacon_chain
             .execution_environments
             .get(args.execution_environment_index as usize)
-        {
-            Ok(args::ExecutionEnvironment::from(execution_environment))
-        } else {
-            Err(Error::OutOfBounds {
-                message: format!(
-                    "No execution environment exists at index: {}",
-                    args.execution_environment_index
-                ),
-            })
-        }
+            .context(OutOfBounds {
+                what: WhatBound::ExecutionEnvironment,
+                index: args.execution_environment_index as usize,
+            })?;
+
+        Ok(args::ExecutionEnvironment::from(execution_environment))
     }
 
     /// Returns the index of the newly added shard chain
@@ -100,7 +118,8 @@ impl Simulation {
             .shard_chains
             .get_mut(args.shard_chain_index as usize)
             .context(OutOfBounds {
-                message: format!("No shard chain exists at index: {}", args.shard_chain_index),
+                what: WhatBound::ShardChain,
+                index: args.shard_chain_index as usize,
             })?;
 
         let mut transactions = Vec::with_capacity(args.shard_block.transactions.len());
@@ -111,10 +130,8 @@ impl Simulation {
                 .execution_environments
                 .get(transaction.ee_index as usize)
                 .context(OutOfBounds {
-                    message: format!(
-                        "No execution environment exists at index: {}",
-                        transaction.ee_index
-                    ),
+                    what: WhatBound::ExecutionEnvironment,
+                    index: transaction.ee_index as usize,
                 })?;
             let code = &execution_environment.wasm_code;
 
@@ -152,45 +169,84 @@ impl Simulation {
     */
 
     pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
-        if let Some(shard_chain) = self.shard_chains.get(args.shard_chain_index as usize) {
-            if let Some(shard_block) = shard_chain
-                .shard_blocks
-                .get(args.shard_block_index as usize)
-            {
-                Ok(args::ShardBlock::from(shard_block))
-            } else {
-                Err(Error::OutOfBounds {
-                    message: format!(
-                        "the shard chain at index '{}' does not contain a block at index '{}'",
-                        args.shard_chain_index, args.shard_block_index
-                    ),
-                })
-            }
-        } else {
-            Err(Error::OutOfBounds {
-                message: format!(
-                    "no shard chain exists at index '{}'",
-                    args.shard_chain_index
-                ),
-            })
-        }
+        let shard_chain = self
+            .shard_chains
+            .get(args.shard_chain_index as usize)
+            .context(OutOfBounds {
+                what: WhatBound::ShardChain,
+                index: args.shard_chain_index as usize,
+            })?;
+
+        let shard_block = shard_chain
+            .shard_blocks
+            .get(args.shard_block_index as usize)
+            .context(OutOfBounds {
+                index: args.shard_block_index as usize,
+                what: WhatBound::ShardBlock(args.shard_chain_index),
+            })?;
+
+        Ok(args::ShardBlock::from(shard_block))
     }
 }
 
+mod b64_vec {
+    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
+    use serde::Serializer;
+
+    pub fn serialize<T, S>(bytes: T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: AsRef<[u8]>,
+        S: Serializer,
+    {
+        let txt = base64::encode(bytes.as_ref());
+        serializer.serialize_str(&txt)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let txt = String::deserialize(deserializer)?;
+
+        base64::decode(&txt)
+            .map_err(|_| D::Error::invalid_value(Unexpected::Str(&txt), &"base64 encoded bytes"))
+    }
+}
+
+mod b64_arr {
+    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
+    use serde::Serializer;
+
+    use super::ToBytes32;
+
+    pub use super::b64_vec::serialize;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let vec = super::b64_vec::deserialize(deserializer)?;
+
+        vec.to_bytes32().map_err(|_| {
+            D::Error::invalid_value(Unexpected::Bytes(&vec), &"exactly 32 base64 encoded bytes")
+        })
+    }
+}
+
+/// Incoming arguments and return values.
 pub mod args {
+    use serde::{Deserialize, Serialize};
 
-    // Incoming argument values
-
-    #[derive(Debug, Default)]
-    pub struct GetSimulationState {}
     #[derive(Debug, Default)]
     pub struct CreateExecutionEnvironment {
         pub execution_environment: ExecutionEnvironment,
     }
-    #[derive(Debug, Default)]
+
+    #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct GetExecutionEnvironment {
         pub execution_environment_index: u32,
     }
+
     #[derive(Debug, Default)]
     pub struct CreateShardChain {}
 
@@ -207,32 +263,35 @@ pub mod args {
 
     // Return values AND/OR sub-components of incoming argument values
 
-    #[derive(Debug, Default)]
+    #[derive(Clone, Debug, Default, Serialize, Deserialize)]
     pub struct ExecutionEnvironment {
-        pub base64_encoded_wasm_code: String,
-        pub base64_encoded_initial_state: String,
+        #[serde(with = "super::b64_vec")]
+        pub wasm_code: Vec<u8>,
+
+        #[serde(with = "super::b64_arr")]
+        pub initial_state: [u8; 32],
     }
 
     impl From<&super::ExecutionEnvironment> for ExecutionEnvironment {
         fn from(ee: &super::ExecutionEnvironment) -> Self {
-            let base64_encoded_wasm_code = base64::encode(&ee.wasm_code);
-            let base64_encoded_initial_state = base64::encode(&ee.initial_shard_state.data);
             Self {
-                base64_encoded_wasm_code,
-                base64_encoded_initial_state,
+                wasm_code: ee.wasm_code.clone(),
+                initial_state: ee.initial_shard_state.data,
             }
         }
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct SimulationState {
         pub num_execution_environments: u32,
         pub num_shard_chains: u32,
     }
+
     #[derive(Debug, Default, Eq, PartialEq)]
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
     }
+
     impl From<&super::ShardBlock> for ShardBlock {
         fn from(sb: &super::ShardBlock) -> Self {
             let transactions: Vec<ShardTransaction> = sb
@@ -329,18 +388,14 @@ struct ExecutionEnvironment {
     initial_shard_state: ExecutionEnvironmentState,
 }
 
-impl TryFrom<args::ExecutionEnvironment> for ExecutionEnvironment {
-    type Error = Error;
-    fn try_from(ee_args: args::ExecutionEnvironment) -> Result<Self, Self::Error> {
-        let wasm_code = base64::decode(&ee_args.base64_encoded_wasm_code).context(Decode)?;
-        let initial_shard_state_vec =
-            base64::decode(&ee_args.base64_encoded_initial_state).context(Decode)?;
-        Ok(Self {
-            wasm_code,
+impl From<args::ExecutionEnvironment> for ExecutionEnvironment {
+    fn from(ee_args: args::ExecutionEnvironment) -> Self {
+        Self {
+            wasm_code: ee_args.wasm_code,
             initial_shard_state: ExecutionEnvironmentState {
-                data: initial_shard_state_vec.to_bytes32()?,
+                data: ee_args.initial_state,
             },
-        })
+        }
     }
 }
 
@@ -403,10 +458,10 @@ mod tests {
         let mut eth = Simulation::new();
 
         // Can create a new EE
-        let example_wasm_code = "some wasm code here";
+        let example_wasm_code = b"some wasm code here";
         let ee_args = args::ExecutionEnvironment {
-            base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&[0; 32]),
+            wasm_code: example_wasm_code.to_vec(),
+            initial_state: [0; 32],
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -423,16 +478,15 @@ mod tests {
         };
         let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
         assert_eq!(
-            ee_args_retrieved.base64_encoded_wasm_code,
-            base64::encode(example_wasm_code),
+            ee_args_retrieved.wasm_code, example_wasm_code,
             "EE wasm code retrieved should match the EE wasm code that was created"
         );
 
         // Can create and retrieve a second EE
-        let example_wasm_code = "some other wasm code here";
+        let example_wasm_code = b"some other wasm code here";
         let ee_args = args::ExecutionEnvironment {
-            base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&[0; 32]),
+            wasm_code: example_wasm_code.to_vec(),
+            initial_state: [0; 32],
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -447,8 +501,7 @@ mod tests {
         };
         let ee_args_retrieved = eth.get_execution_environment(get_ee_args).unwrap();
         assert_eq!(
-            ee_args_retrieved.base64_encoded_wasm_code,
-            base64::encode(example_wasm_code),
+            ee_args_retrieved.wasm_code, example_wasm_code,
             "EE wasm code retrieved should match the EE wasm code that was created"
         );
     }
@@ -482,29 +535,26 @@ mod tests {
     fn can_get_simulation_state() {
         let mut eth = Simulation::new();
 
-        let get_ss_args = args::GetSimulationState {};
-        let general_state = eth.simulation_state(get_ss_args);
+        let general_state = eth.simulation_state();
         assert_eq!(0, general_state.num_shard_chains);
         assert_eq!(0, general_state.num_execution_environments);
 
         let sc_args = args::CreateShardChain {};
         eth.create_shard_chain(sc_args);
 
-        let get_ss_args = args::GetSimulationState {};
-        let general_state = eth.simulation_state(get_ss_args);
+        let general_state = eth.simulation_state();
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(0, general_state.num_execution_environments);
 
         let ee_args = args::ExecutionEnvironment {
-            base64_encoded_wasm_code: base64::encode("wasm msaw"),
-            base64_encoded_initial_state: base64::encode(&[0; 32]),
+            wasm_code: b"wasm msaw".to_vec(),
+            initial_state: [0; 32],
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
         };
         eth.create_execution_environment(create_ee_args);
-        let get_ss_args = args::GetSimulationState {};
-        let general_state = eth.simulation_state(get_ss_args);
+        let general_state = eth.simulation_state();
         assert_eq!(1, general_state.num_shard_chains);
         assert_eq!(1, general_state.num_execution_environments);
     }
@@ -534,8 +584,8 @@ mod tests {
         // Add EE
         let example_wasm_code: &[u8] = include_bytes!("../../tests/do_nothing.wasm");
         let ee_args = args::ExecutionEnvironment {
-            base64_encoded_wasm_code: base64::encode(example_wasm_code),
-            base64_encoded_initial_state: base64::encode(&[0; 32]),
+            wasm_code: example_wasm_code.to_vec(),
+            initial_state: [0; 32],
         };
         let create_ee_args = args::CreateExecutionEnvironment {
             execution_environment: ee_args,
@@ -598,8 +648,8 @@ mod tests {
         let mut simulation = Simulation::new();
 
         let execution_environment = args::ExecutionEnvironment {
-            base64_encoded_wasm_code: base64::encode(wasm_code),
-            base64_encoded_initial_state: base64::encode(&Vec::from_hex(initial_state).unwrap()),
+            wasm_code: wasm_code.to_vec(),
+            initial_state: Vec::from_hex(initial_state).unwrap().to_bytes32().unwrap(),
         };
         assert_eq!(
             0,
