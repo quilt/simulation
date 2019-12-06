@@ -1,8 +1,7 @@
 language: rust
 
 rust:
-  - 1.39.0
-  - stable
+  - nightly-2019-11-06
 
 cache: cargo
 
