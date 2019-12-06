@@ -263,7 +263,7 @@ pub mod args {
 
     // Return values AND/OR sub-components of incoming argument values
 
-    #[derive(Debug, Default, Serialize, Deserialize)]
+    #[derive(Clone, Debug, Default, Serialize, Deserialize)]
     pub struct ExecutionEnvironment {
         #[serde(with = "super::base64_vec")]
         pub wasm_code: Vec<u8>,

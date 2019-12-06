@@ -1,8 +1,9 @@
 use crate::ethereum::{args, Handle, Result as EthResult};
 use crate::Notion;
 
-use rocket::config;
-use rocket::{get, routes, State};
+use rocket::response::status;
+use rocket::{config, uri};
+use rocket::{get, post, routes, State};
 
 use rocket_contrib::json::Json;
 
@@ -25,7 +26,14 @@ pub fn run(notion: &Notion, handle: Handle) -> Result<()> {
         .context(Config)?;
 
     rocket::custom(config)
-        .mount("/", routes![simulation_state, show_execution_environment,])
+        .mount(
+            "/",
+            routes![
+                simulation_state,
+                show_execution_environment,
+                create_execution_environment
+            ],
+        )
         .manage(handle)
         .launch();
 
@@ -51,4 +59,22 @@ async fn show_execution_environment(
 
     let ee = handle.clone().execution_environment(arg).await?;
     Ok(Json(ee))
+}
+
+#[tokio::main]
+#[post("/beacon/execution-environments", data = "<ee>")]
+async fn create_execution_environment(
+    ee: Json<args::ExecutionEnvironment>,
+    handle: State<Handle>,
+) -> EthResult<status::Created<()>> {
+    let ee = ee.into_inner();
+
+    let arg = args::CreateExecutionEnvironment {
+        execution_environment: ee.clone(),
+    };
+
+    let idx = handle.clone().create_execution_environment(arg).await?;
+    let location = uri!(show_execution_environment: idx);
+
+    Ok(status::Created(location.to_string(), None))
 }
