@@ -31,7 +31,9 @@ pub fn run(notion: &Notion, handle: Handle) -> Result<()> {
             routes![
                 simulation_state,
                 show_execution_environment,
-                create_execution_environment
+                create_execution_environment,
+                show_shard_chain,
+                create_shard_chain,
             ],
         )
         .manage(handle)
@@ -77,4 +79,30 @@ async fn create_execution_environment(
     let location = uri!(show_execution_environment: idx);
 
     Ok(status::Created(location.to_string(), None))
+}
+
+#[tokio::main]
+#[post("/shards", data = "<shard>")]
+async fn create_shard_chain(
+    shard: Json<args::CreateShardChain>,
+    handle: State<Handle>,
+) -> EthResult<status::Created<()>> {
+    let shard = shard.into_inner();
+
+    let idx = handle.clone().create_shard_chain(shard).await?;
+    let location = uri!(show_shard_chain: idx);
+
+    Ok(status::Created(location.to_string(), None))
+}
+
+#[tokio::main]
+#[get("/shards/<index>")]
+async fn show_shard_chain(index: u32, handle: State<Handle>) -> EthResult<Json<args::ShardChain>> {
+    let arg = args::GetShardChain {
+        shard_chain_index: index,
+    };
+
+    let shard = handle.clone().shard_chain(arg).await?;
+
+    Ok(Json(shard))
 }
