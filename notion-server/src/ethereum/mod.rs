@@ -163,10 +163,21 @@ impl Simulation {
 
     /* Getter methods still needed
         Beacon State
-        Shard State
         Transactions (do we want to store EE state per shard before / after each transaction?
 
     */
+
+    pub fn shard_chain(&self, arg: args::GetShardChain) -> Result<args::ShardChain> {
+        // TODO: Add useful information to the output. Maybe count of blocks?
+
+        let idx = arg.shard_chain_index as usize;
+        let chain = self.shard_chains.get(idx).context(OutOfBounds {
+            what: WhatBound::ShardChain,
+            index: idx,
+        })?;
+
+        Ok(args::ShardChain {})
+    }
 
     pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<args::ShardBlock> {
         let shard_chain = self
@@ -243,11 +254,16 @@ pub mod args {
     }
 
     #[derive(Debug, Default, Serialize, Deserialize)]
+    pub struct GetShardChain {
+        pub shard_chain_index: u32,
+    }
+
+    #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct GetExecutionEnvironment {
         pub execution_environment_index: u32,
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct CreateShardChain {}
 
     #[derive(Debug, Default)]
@@ -286,6 +302,9 @@ pub mod args {
         pub num_execution_environments: u32,
         pub num_shard_chains: u32,
     }
+
+    #[derive(Debug, Default, Serialize, Deserialize)]
+    pub struct ShardChain {}
 
     #[derive(Debug, Default, Eq, PartialEq)]
     pub struct ShardBlock {

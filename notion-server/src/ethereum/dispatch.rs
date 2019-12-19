@@ -15,6 +15,7 @@ enum Operation {
     ),
     GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
     GetSimulationState(Sender<args::SimulationState>),
+    GetShardChain(args::GetShardChain, Sender<Result<args::ShardChain>>),
 }
 
 #[derive(Debug)]
@@ -64,6 +65,10 @@ impl Dispatch {
                     let res = self.simulation.simulation_state();
                     reply.send(res).await;
                 }
+                Operation::GetShardChain(args, mut reply) => {
+                    let res = self.simulation.shard_chain(args);
+                    reply.send(res).await;
+                }
             }
         }
 
@@ -104,6 +109,13 @@ impl Handle {
         receiver.recv().await.context(Terminated)
     }
 
+    pub async fn shard_chain(&mut self, arg: args::GetShardChain) -> Result<args::ShardChain> {
+        let (sender, mut receiver) = channel(1);
+
+        self.0.send(Operation::GetShardChain(arg, sender)).await;
+
+        receiver.recv().await.context(Terminated)?
+    }
     pub async fn execution_environment(
         &mut self,
         arg: args::GetExecutionEnvironment,
