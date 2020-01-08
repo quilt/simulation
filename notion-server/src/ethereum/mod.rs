@@ -19,6 +19,7 @@ pub type Result<V, E = Error> = std::result::Result<V, E>;
 
 #[derive(Debug)]
 pub enum WhatBound {
+    BeaconBlock,
     ExecutionEnvironment,
     ShardChain,
     ShardBlock(u32),
@@ -74,6 +75,33 @@ impl Simulation {
         }
     }
 
+    pub fn create_beacon_block(
+        &mut self,
+        args: args::CreateBeaconBlock,
+    ) -> Result<u32> {
+        let beacon_block = BeaconBlock::from(args.beacon_block);
+        let beacon_block_index = self
+            .beacon_chain
+            .add_beacon_block(beacon_block);
+        Ok(beacon_block_index)
+    }
+
+    pub fn get_beacon_block(
+        &self,
+        args: args::GetBeaconBlock,
+    ) -> Result<args::BeaconBlock> {
+        let beacon_block = self
+            .beacon_chain
+            .beacon_blocks
+            .get(args.beacon_block_index as usize)
+            .context(Error::OutOfBounds {
+                what: WhatBound::BeaconBlock,
+                index: args.beacon_block_index as usize,
+            })?;
+
+        Ok(args::BeaconBlock::from(beacon_block))
+    }
+
     /// Creates a new execution environment on the BeaconChain and returns the
     /// index of the created execution environment
     pub fn create_execution_environment(
@@ -95,7 +123,7 @@ impl Simulation {
             .beacon_chain
             .execution_environments
             .get(args.execution_environment_index as usize)
-            .context(OutOfBounds {
+            .context(Error::OutOfBounds {
                 what: WhatBound::ExecutionEnvironment,
                 index: args.execution_environment_index as usize,
             })?;
@@ -249,13 +277,18 @@ pub mod args {
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Default)]
-    pub struct CreateExecutionEnvironment {
-        pub execution_environment: ExecutionEnvironment,
+    pub struct CreateBeaconBlock {
+        pub beacon_block: BeaconBlock,
     }
 
-    #[derive(Debug, Default, Serialize, Deserialize)]
-    pub struct GetShardChain {
-        pub shard_chain_index: u32,
+    #[derive(Debug, Default)]
+    pub struct GetBeaconBlock {
+        pub beacon_block_index: u32,
+    }
+
+    #[derive(Debug, Default)]
+    pub struct CreateExecutionEnvironment {
+        pub execution_environment: ExecutionEnvironment,
     }
 
     #[derive(Debug, Default, Serialize, Deserialize)]
@@ -265,6 +298,11 @@ pub mod args {
 
     #[derive(Debug, Default, Serialize, Deserialize)]
     pub struct CreateShardChain {}
+
+    #[derive(Debug, Default, Serialize, Deserialize)]
+    pub struct GetShardChain {
+        pub shard_chain_index: u32,
+    }
 
     #[derive(Debug, Default)]
     pub struct CreateShardBlock {
@@ -278,6 +316,37 @@ pub mod args {
     }
 
     // Return values AND/OR sub-components of incoming argument values
+
+    pub struct BeaconBlock {
+        cross_links: HashMap<u32, CrossLink>
+    }
+    impl From<&super::BeaconBlock> for BeaconBlock {
+        fn from(beacon_block: &super::BeaconBlock) -> Self {
+            let cross_links: HashMap<u32, Vec<u8>> = HashMap::new();
+            for (k, v) in beacon_block.cross_links {
+                cross_links[k] = v.clone();
+            }
+            Self {
+                cross_links,
+            }
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct CrossLink {
+        execution_environment_state: HashMap<u32, Vec<u8>>
+    }
+    impl From<&super::CrossLink> for CrossLink {
+        fn from(cross_link: &super::CrossLink) -> Self {
+            let execution_environment_state: HashMap<u32, Vec<u8>> = HashMap::new();
+            for (k, v) in cross_link {
+                execution_environment_state[k] = v.clone();
+            }
+            Self {
+                execution_environment_state,
+            }
+        }
+    }
 
     #[derive(Clone, Debug, Default, Serialize, Deserialize)]
     pub struct ExecutionEnvironment {
@@ -342,6 +411,7 @@ pub mod args {
 
 #[derive(Debug, Default)]
 struct BeaconChain {
+    beacon_blocks: Vec<BeaconBlock>,
     // There are an unbounded number of EEs that can "exist" on the beacon chain
     execution_environments: Vec<ExecutionEnvironment>,
 }
@@ -349,8 +419,17 @@ struct BeaconChain {
 impl BeaconChain {
     fn new() -> Self {
         Self {
+            beacon_blocks: Vec::new(),
             execution_environments: Vec::new(),
         }
+    }
+
+    fn add_beacon_block(
+        &mut self,
+        beacon_block: BeaconBlock,
+    ) -> BeaconBlockIndex {
+        self.beacon_blocks.push(beacon_block);
+        BeaconBlockIndex((self.beacon_blocks.len() - 1) as u32)
     }
 
     // Adds a new execution environment, returns the index of that new EE
@@ -398,6 +477,11 @@ impl ToBytes32 for Vec<u8> {
 
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct EeIndex(u32);
+
+#[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
+pub struct ShardChainIndex(u32);
+
+// TODO: Add beacon block / shard block index types
 
 // The execution environment data that lives on the beacon chain
 // Does NOT include shard-specific EE state
@@ -466,12 +550,45 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
     }
 }
 
+#[derive(Default, Debug)]
+struct BeaconBlock {
+    cross_links: HashMap<ShardChainIndex, CrossLink>
+}
+
+#[derive(Default, Debug)]
+struct CrossLink {
+    execution_environment_state: HashMap<EeIndex, Vec<u8>>
+}
+
+#[derive(Default, Debug)]
+/// Contains all un-executed transactions that have yet to be included in a block
+struct PendingTransactionPool {
+    shard_transactions: Vec<HashMap<u32, Vec<ShardTransaction>>>
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use hex::FromHex;
     use std::path::Path;
 
+    #[test]
+    fn can_create_and_get_beacon_blocks() {
+        let mut eth = Simulation::new();
+        let beacon_block = BeaconBlock {
+            cross_links: vec![CrossLink::default()],
+        };
+        let args = args::CreateBeaconBlock {
+            beacon_block: args::BeaconBlock {
+                cross_links: HashMap::new(),
+            }
+        };
+        let beacon_block_index = eth.create_beacon_block(args);
+        assert_eq!(
+            beacon_block_index, 0,
+            "The first beacon block created should have an index of 0"
+        );
+    }
     #[test]
     fn can_create_and_get_execution_environments() {
         let mut eth = Simulation::new();
