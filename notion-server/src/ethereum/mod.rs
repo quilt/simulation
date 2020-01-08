@@ -28,6 +28,7 @@ pub enum WhatBound {
 impl fmt::Display for WhatBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            WhatBound::BeaconBlock => write!(f, "beacon block"),
             WhatBound::ExecutionEnvironment => write!(f, "execution environment"),
             WhatBound::ShardChain => write!(f, "shard chain"),
             WhatBound::ShardBlock(shard) => write!(f, "block on shard {}", shard),
@@ -80,7 +81,7 @@ impl Simulation {
         args: args::CreateBeaconBlock,
     ) -> Result<u32> {
         let beacon_block = BeaconBlock::from(args.beacon_block);
-        let beacon_block_index = self
+        let BeaconBlockIndex(beacon_block_index) = self
             .beacon_chain
             .add_beacon_block(beacon_block);
         Ok(beacon_block_index)
@@ -94,7 +95,7 @@ impl Simulation {
             .beacon_chain
             .beacon_blocks
             .get(args.beacon_block_index as usize)
-            .context(Error::OutOfBounds {
+            .context(OutOfBounds {
                 what: WhatBound::BeaconBlock,
                 index: args.beacon_block_index as usize,
             })?;
@@ -123,7 +124,7 @@ impl Simulation {
             .beacon_chain
             .execution_environments
             .get(args.execution_environment_index as usize)
-            .context(Error::OutOfBounds {
+            .context(OutOfBounds {
                 what: WhatBound::ExecutionEnvironment,
                 index: args.execution_environment_index as usize,
             })?;
@@ -275,6 +276,7 @@ mod base64_arr {
 /// Incoming arguments and return values.
 pub mod args {
     use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
 
     #[derive(Debug, Default)]
     pub struct CreateBeaconBlock {
@@ -317,14 +319,17 @@ pub mod args {
 
     // Return values AND/OR sub-components of incoming argument values
 
+    #[derive(Debug, Default)]
     pub struct BeaconBlock {
-        cross_links: HashMap<u32, CrossLink>
+        pub cross_links: HashMap<u32, CrossLink>
     }
     impl From<&super::BeaconBlock> for BeaconBlock {
         fn from(beacon_block: &super::BeaconBlock) -> Self {
-            let cross_links: HashMap<u32, Vec<u8>> = HashMap::new();
-            for (k, v) in beacon_block.cross_links {
-                cross_links[k] = v.clone();
+            let mut cross_links: HashMap<u32, CrossLink> = HashMap::new();
+            for (k, v) in &beacon_block.cross_links {
+                let super::ShardChainIndex(shard_chain_index) = k;
+                let cross_link: CrossLink = CrossLink::from(v);
+                cross_links.insert(*shard_chain_index, cross_link);
             }
             Self {
                 cross_links,
@@ -333,17 +338,18 @@ pub mod args {
     }
 
     #[derive(Default, Debug)]
-    struct CrossLink {
-        execution_environment_state: HashMap<u32, Vec<u8>>
+    pub struct CrossLink {
+        pub execution_environment_states: HashMap<u32, Vec<u8>>
     }
     impl From<&super::CrossLink> for CrossLink {
         fn from(cross_link: &super::CrossLink) -> Self {
-            let execution_environment_state: HashMap<u32, Vec<u8>> = HashMap::new();
-            for (k, v) in cross_link {
-                execution_environment_state[k] = v.clone();
+            let mut execution_environment_states: HashMap<u32, Vec<u8>> = HashMap::new();
+            for (k, v) in &cross_link.execution_environment_states {
+                let super::EeIndex(k) = k;
+                execution_environment_states.insert(*k, v.clone());
             }
             Self {
-                execution_environment_state,
+                execution_environment_states,
             }
         }
     }
@@ -477,7 +483,8 @@ impl ToBytes32 for Vec<u8> {
 
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct EeIndex(u32);
-
+#[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
+pub struct BeaconBlockIndex(u32);
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct ShardChainIndex(u32);
 
@@ -554,10 +561,36 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 struct BeaconBlock {
     cross_links: HashMap<ShardChainIndex, CrossLink>
 }
+impl From<args::BeaconBlock> for BeaconBlock {
+    fn from(beacon_block_args: args::BeaconBlock) -> Self {
+        let mut cross_links: HashMap<ShardChainIndex, CrossLink> = HashMap::new();
+        for (k, v) in beacon_block_args.cross_links {
+            let k = ShardChainIndex(k);
+            let v = CrossLink::from(v);
+            cross_links.insert(k, v);
+        }
+        Self {
+            cross_links,
+        }
+    }
+}
 
-#[derive(Default, Debug)]
+
+#[derive(Default, Debug, Clone)]
 struct CrossLink {
-    execution_environment_state: HashMap<EeIndex, Vec<u8>>
+    execution_environment_states: HashMap<EeIndex, Vec<u8>>
+}
+impl From<args::CrossLink> for CrossLink {
+    fn from(cross_link_args: args::CrossLink) -> Self {
+        let mut execution_environment_states: HashMap<EeIndex, Vec<u8>> = HashMap::new();
+        for (k, v) in cross_link_args.execution_environment_states {
+            let k = EeIndex(k);
+            execution_environment_states.insert(k, v);
+        }
+        Self {
+            execution_environment_states,
+        }
+    }
 }
 
 #[derive(Default, Debug)]
