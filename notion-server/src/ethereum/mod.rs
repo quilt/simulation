@@ -475,8 +475,6 @@ pub struct BeaconBlockIndex(u32);
 #[derive(Debug, Default, Hash, Clone, Copy, Eq, PartialEq)]
 pub struct ShardChainIndex(u32);
 
-// TODO: Add beacon block / shard block index types
-
 // The execution environment data that lives on the beacon chain
 // Does NOT include shard-specific EE state
 #[derive(Debug)]
