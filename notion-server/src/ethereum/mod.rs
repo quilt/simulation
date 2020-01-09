@@ -76,21 +76,13 @@ impl Simulation {
         }
     }
 
-    pub fn create_beacon_block(
-        &mut self,
-        args: args::CreateBeaconBlock,
-    ) -> Result<u32> {
+    pub fn create_beacon_block(&mut self, args: args::CreateBeaconBlock) -> Result<u32> {
         let beacon_block = BeaconBlock::from(args.beacon_block);
-        let BeaconBlockIndex(beacon_block_index) = self
-            .beacon_chain
-            .add_beacon_block(beacon_block);
+        let BeaconBlockIndex(beacon_block_index) = self.beacon_chain.add_beacon_block(beacon_block);
         Ok(beacon_block_index)
     }
 
-    pub fn get_beacon_block(
-        &self,
-        args: args::GetBeaconBlock,
-    ) -> Result<args::BeaconBlock> {
+    pub fn get_beacon_block(&self, args: args::GetBeaconBlock) -> Result<args::BeaconBlock> {
         let beacon_block = self
             .beacon_chain
             .beacon_blocks
@@ -321,7 +313,7 @@ pub mod args {
 
     #[derive(Debug, Default)]
     pub struct BeaconBlock {
-        pub cross_links: HashMap<u32, CrossLink>
+        pub cross_links: HashMap<u32, CrossLink>,
     }
     impl From<&super::BeaconBlock> for BeaconBlock {
         fn from(beacon_block: &super::BeaconBlock) -> Self {
@@ -331,15 +323,13 @@ pub mod args {
                 let cross_link: CrossLink = CrossLink::from(v);
                 cross_links.insert(*shard_chain_index, cross_link);
             }
-            Self {
-                cross_links,
-            }
+            Self { cross_links }
         }
     }
 
     #[derive(Default, Debug, Clone)]
     pub struct CrossLink {
-        pub execution_environment_states: HashMap<u32, Vec<u8>>
+        pub execution_environment_states: HashMap<u32, Vec<u8>>,
     }
     impl From<&super::CrossLink> for CrossLink {
         fn from(cross_link: &super::CrossLink) -> Self {
@@ -430,10 +420,7 @@ impl BeaconChain {
         }
     }
 
-    fn add_beacon_block(
-        &mut self,
-        beacon_block: BeaconBlock,
-    ) -> BeaconBlockIndex {
+    fn add_beacon_block(&mut self, beacon_block: BeaconBlock) -> BeaconBlockIndex {
         self.beacon_blocks.push(beacon_block);
         BeaconBlockIndex((self.beacon_blocks.len() - 1) as u32)
     }
@@ -559,7 +546,7 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 
 #[derive(Default, Debug)]
 struct BeaconBlock {
-    cross_links: HashMap<ShardChainIndex, CrossLink>
+    cross_links: HashMap<ShardChainIndex, CrossLink>,
 }
 impl From<args::BeaconBlock> for BeaconBlock {
     fn from(beacon_block_args: args::BeaconBlock) -> Self {
@@ -569,16 +556,13 @@ impl From<args::BeaconBlock> for BeaconBlock {
             let v = CrossLink::from(v);
             cross_links.insert(k, v);
         }
-        Self {
-            cross_links,
-        }
+        Self { cross_links }
     }
 }
 
-
 #[derive(Default, Debug, Clone)]
 struct CrossLink {
-    execution_environment_states: HashMap<EeIndex, Vec<u8>>
+    execution_environment_states: HashMap<EeIndex, Vec<u8>>,
 }
 impl From<args::CrossLink> for CrossLink {
     fn from(cross_link_args: args::CrossLink) -> Self {
@@ -591,12 +575,6 @@ impl From<args::CrossLink> for CrossLink {
             execution_environment_states,
         }
     }
-}
-
-#[derive(Default, Debug)]
-/// Contains all un-executed transactions that have yet to be included in a block
-struct PendingTransactionPool {
-    shard_transactions: Vec<HashMap<u32, Vec<ShardTransaction>>>
 }
 
 #[cfg(test)]
@@ -626,7 +604,7 @@ mod tests {
         let args = args::CreateBeaconBlock {
             beacon_block: args::BeaconBlock {
                 cross_links: example_cross_links,
-            }
+            },
         };
         let beacon_block_index = eth.create_beacon_block(args).unwrap();
         assert_eq!(
@@ -634,24 +612,31 @@ mod tests {
             "The first beacon block created should have an index of 0"
         );
 
-        let get_beacon_block_args = args::GetBeaconBlock {
-            beacon_block_index,
-        };
+        let get_beacon_block_args = args::GetBeaconBlock { beacon_block_index };
         let beacon_block_retrieved = eth.get_beacon_block(get_beacon_block_args).unwrap();
         assert_eq!(
-            beacon_block_retrieved.cross_links.len(), 3,
+            beacon_block_retrieved.cross_links.len(),
+            3,
             "The beacon block retrieved should have 3 crosslinks"
         );
 
         let cross_link_retrieved1 = beacon_block_retrieved.cross_links.get(&0).unwrap();
-        let example_ee_state_retrieved1 = cross_link_retrieved1.execution_environment_states.get(&0).unwrap();
-        let example_ee_state_retrieved2 = cross_link_retrieved1.execution_environment_states.get(&1).unwrap();
+        let example_ee_state_retrieved1 = cross_link_retrieved1
+            .execution_environment_states
+            .get(&0)
+            .unwrap();
+        let example_ee_state_retrieved2 = cross_link_retrieved1
+            .execution_environment_states
+            .get(&1)
+            .unwrap();
         assert_eq!(
-            &example_ee_state1.to_vec(), example_ee_state_retrieved1,
+            &example_ee_state1.to_vec(),
+            example_ee_state_retrieved1,
             "The EE states should match for the first EE"
         );
         assert_eq!(
-            &example_ee_state2.to_vec(), example_ee_state_retrieved2,
+            &example_ee_state2.to_vec(),
+            example_ee_state_retrieved2,
             "The EE states should match for the second EE"
         );
     }
