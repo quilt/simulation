@@ -337,7 +337,7 @@ pub mod args {
         }
     }
 
-    #[derive(Default, Debug)]
+    #[derive(Default, Debug, Clone)]
     pub struct CrossLink {
         pub execution_environment_states: HashMap<u32, Vec<u8>>
     }
@@ -608,18 +608,51 @@ mod tests {
     #[test]
     fn can_create_and_get_beacon_blocks() {
         let mut eth = Simulation::new();
-        let beacon_block = BeaconBlock {
-            cross_links: vec![CrossLink::default()],
+        let mut example_cross_links: HashMap<u32, args::CrossLink> = HashMap::new();
+        let mut example_ee_states: HashMap<u32, Vec<u8>> = HashMap::new();
+        let example_ee_state1 = b"some example state";
+        let example_ee_state2 = b"some other example state";
+        example_ee_states.insert(0, example_ee_state1.to_vec());
+        example_ee_states.insert(1, example_ee_state2.to_vec());
+        let example_cross_link1 = args::CrossLink {
+            execution_environment_states: example_ee_states,
         };
+        let example_cross_link2 = example_cross_link1.clone();
+        let example_cross_link3 = example_cross_link1.clone();
+        example_cross_links.insert(0, example_cross_link1);
+        example_cross_links.insert(1, example_cross_link2);
+        example_cross_links.insert(2, example_cross_link3);
+
         let args = args::CreateBeaconBlock {
             beacon_block: args::BeaconBlock {
-                cross_links: HashMap::new(),
+                cross_links: example_cross_links,
             }
         };
-        let beacon_block_index = eth.create_beacon_block(args);
+        let beacon_block_index = eth.create_beacon_block(args).unwrap();
         assert_eq!(
             beacon_block_index, 0,
             "The first beacon block created should have an index of 0"
+        );
+
+        let get_beacon_block_args = args::GetBeaconBlock {
+            beacon_block_index,
+        };
+        let beacon_block_retrieved = eth.get_beacon_block(get_beacon_block_args).unwrap();
+        assert_eq!(
+            beacon_block_retrieved.cross_links.len(), 3,
+            "The beacon block retrieved should have 3 crosslinks"
+        );
+
+        let cross_link_retrieved1 = beacon_block_retrieved.cross_links.get(&0).unwrap();
+        let example_ee_state_retrieved1 = cross_link_retrieved1.execution_environment_states.get(&0).unwrap();
+        let example_ee_state_retrieved2 = cross_link_retrieved1.execution_environment_states.get(&1).unwrap();
+        assert_eq!(
+            &example_ee_state1.to_vec(), example_ee_state_retrieved1,
+            "The EE states should match for the first EE"
+        );
+        assert_eq!(
+            &example_ee_state2.to_vec(), example_ee_state_retrieved2,
+            "The EE states should match for the second EE"
         );
     }
     #[test]
