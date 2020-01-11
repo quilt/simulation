@@ -317,27 +317,34 @@ pub mod args {
     }
     impl From<&super::BeaconBlock> for BeaconBlock {
         fn from(beacon_block: &super::BeaconBlock) -> Self {
-            let mut cross_links: HashMap<u32, CrossLink> = HashMap::new();
-            for (k, v) in &beacon_block.cross_links {
-                let super::ShardChainIndex(shard_chain_index) = k;
-                let cross_link: CrossLink = CrossLink::from(v);
-                cross_links.insert(*shard_chain_index, cross_link);
-            }
+            let cross_links: HashMap<u32, CrossLink> = beacon_block
+                .cross_links
+                .iter()
+                .map(|(k, v)| -> (u32, CrossLink) {
+                    let super::ShardChainIndex(shard_chain_index) = k;
+                    let cross_link: CrossLink = CrossLink::from(v);
+                    (*shard_chain_index, cross_link)
+                })
+                .collect();
+
             Self { cross_links }
         }
     }
 
     #[derive(Default, Debug, Clone)]
     pub struct CrossLink {
-        pub execution_environment_states: HashMap<u32, Vec<u8>>,
+        pub execution_environment_states: HashMap<u32, [u8; 32]>,
     }
     impl From<&super::CrossLink> for CrossLink {
         fn from(cross_link: &super::CrossLink) -> Self {
-            let mut execution_environment_states: HashMap<u32, Vec<u8>> = HashMap::new();
-            for (k, v) in &cross_link.execution_environment_states {
-                let super::EeIndex(k) = k;
-                execution_environment_states.insert(*k, v.clone());
-            }
+            let execution_environment_states = cross_link
+                .execution_environment_states
+                .iter()
+                .map(|(k, v)| -> (u32, [u8; 32]) {
+                    let super::EeIndex(k) = k;
+                    (*k, v.clone())
+                })
+                .collect();
             Self {
                 execution_environment_states,
             }
@@ -548,27 +555,34 @@ struct BeaconBlock {
 }
 impl From<args::BeaconBlock> for BeaconBlock {
     fn from(beacon_block_args: args::BeaconBlock) -> Self {
-        let mut cross_links: HashMap<ShardChainIndex, CrossLink> = HashMap::new();
-        for (k, v) in beacon_block_args.cross_links {
-            let k = ShardChainIndex(k);
-            let v = CrossLink::from(v);
-            cross_links.insert(k, v);
-        }
+        let cross_links: HashMap<ShardChainIndex, CrossLink> = beacon_block_args
+            .cross_links
+            .iter()
+            .map(|(k, v)| -> (ShardChainIndex, CrossLink) {
+                let shard_chain_index = ShardChainIndex(*k);
+                let cross_link = CrossLink::from(v);
+                (shard_chain_index, cross_link)
+            })
+            .collect();
         Self { cross_links }
     }
 }
 
 #[derive(Default, Debug, Clone)]
 struct CrossLink {
-    execution_environment_states: HashMap<EeIndex, Vec<u8>>,
+    execution_environment_states: HashMap<EeIndex, [u8; 32]>,
 }
-impl From<args::CrossLink> for CrossLink {
-    fn from(cross_link_args: args::CrossLink) -> Self {
-        let mut execution_environment_states: HashMap<EeIndex, Vec<u8>> = HashMap::new();
-        for (k, v) in cross_link_args.execution_environment_states {
-            let k = EeIndex(k);
-            execution_environment_states.insert(k, v);
-        }
+impl From<&args::CrossLink> for CrossLink {
+    fn from(cross_link_args: &args::CrossLink) -> Self {
+        let execution_environment_states: HashMap<EeIndex, [u8; 32]> = cross_link_args
+            .execution_environment_states
+            .iter()
+            .map(|(k, v)| -> (EeIndex, [u8; 32]) {
+                let ee_index = EeIndex(*k);
+                let execution_environment_state = v.clone();
+                (ee_index, execution_environment_state)
+            })
+            .collect();
         Self {
             execution_environment_states,
         }
@@ -585,11 +599,11 @@ mod tests {
     fn can_create_and_get_beacon_blocks() {
         let mut eth = Simulation::new();
         let mut example_cross_links: HashMap<u32, args::CrossLink> = HashMap::new();
-        let mut example_ee_states: HashMap<u32, Vec<u8>> = HashMap::new();
-        let example_ee_state1 = b"some example state";
-        let example_ee_state2 = b"some other example state";
-        example_ee_states.insert(0, example_ee_state1.to_vec());
-        example_ee_states.insert(1, example_ee_state2.to_vec());
+        let mut example_ee_states: HashMap<u32, [u8; 32]> = HashMap::new();
+        let example_ee_state1: [u8; 32] = [1; 32];
+        let example_ee_state2: [u8; 32] = [2; 32];
+        example_ee_states.insert(0, example_ee_state1);
+        example_ee_states.insert(1, example_ee_state2);
         let example_cross_link1 = args::CrossLink {
             execution_environment_states: example_ee_states,
         };
@@ -628,13 +642,11 @@ mod tests {
             .get(&1)
             .unwrap();
         assert_eq!(
-            &example_ee_state1.to_vec(),
-            example_ee_state_retrieved1,
+            &example_ee_state1, example_ee_state_retrieved1,
             "The EE states should match for the first EE"
         );
         assert_eq!(
-            &example_ee_state2.to_vec(),
-            example_ee_state_retrieved2,
+            &example_ee_state2, example_ee_state_retrieved2,
             "The EE states should match for the second EE"
         );
     }
