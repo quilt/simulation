@@ -313,17 +313,15 @@ pub mod args {
 
     #[derive(Debug, Default)]
     pub struct BeaconBlock {
-        pub cross_links: HashMap<u32, CrossLink>,
+        pub cross_links: Vec<CrossLink>,
     }
     impl From<&super::BeaconBlock> for BeaconBlock {
         fn from(beacon_block: &super::BeaconBlock) -> Self {
-            let cross_links: HashMap<u32, CrossLink> = beacon_block
+            let cross_links: Vec<CrossLink> = beacon_block
                 .cross_links
                 .iter()
-                .map(|(k, v)| -> (u32, CrossLink) {
-                    let super::ShardChainIndex(shard_chain_index) = k;
-                    let cross_link: CrossLink = CrossLink::from(v);
-                    (*shard_chain_index, cross_link)
+                .map(|(cross_link)| -> CrossLink {
+                    CrossLink::from(cross_link)
                 })
                 .collect();
 
@@ -551,17 +549,15 @@ impl TryFrom<&args::ShardTransaction> for ShardTransaction {
 
 #[derive(Default, Debug)]
 struct BeaconBlock {
-    cross_links: HashMap<ShardChainIndex, CrossLink>,
+    cross_links: Vec<CrossLink>,
 }
 impl From<args::BeaconBlock> for BeaconBlock {
     fn from(beacon_block_args: args::BeaconBlock) -> Self {
-        let cross_links: HashMap<ShardChainIndex, CrossLink> = beacon_block_args
+        let cross_links: Vec<CrossLink> = beacon_block_args
             .cross_links
             .iter()
-            .map(|(k, v)| -> (ShardChainIndex, CrossLink) {
-                let shard_chain_index = ShardChainIndex(*k);
-                let cross_link = CrossLink::from(v);
-                (shard_chain_index, cross_link)
+            .map(|(cross_link_args)| -> CrossLink {
+                CrossLink::from(cross_link_args)
             })
             .collect();
         Self { cross_links }
@@ -598,7 +594,7 @@ mod tests {
     #[test]
     fn can_create_and_get_beacon_blocks() {
         let mut eth = Simulation::new();
-        let mut example_cross_links: HashMap<u32, args::CrossLink> = HashMap::new();
+        let mut example_cross_links: Vec<args::CrossLink> = Vec::new();
         let mut example_ee_states: HashMap<u32, [u8; 32]> = HashMap::new();
         let example_ee_state1: [u8; 32] = [1; 32];
         let example_ee_state2: [u8; 32] = [2; 32];
@@ -609,9 +605,9 @@ mod tests {
         };
         let example_cross_link2 = example_cross_link1.clone();
         let example_cross_link3 = example_cross_link1.clone();
-        example_cross_links.insert(0, example_cross_link1);
-        example_cross_links.insert(1, example_cross_link2);
-        example_cross_links.insert(2, example_cross_link3);
+        example_cross_links.push( example_cross_link1);
+        example_cross_links.push( example_cross_link2);
+        example_cross_links.push( example_cross_link3);
 
         let args = args::CreateBeaconBlock {
             beacon_block: args::BeaconBlock {
@@ -632,7 +628,7 @@ mod tests {
             "The beacon block retrieved should have 3 crosslinks"
         );
 
-        let cross_link_retrieved1 = beacon_block_retrieved.cross_links.get(&0).unwrap();
+        let cross_link_retrieved1 = &beacon_block_retrieved.cross_links[0];
         let example_ee_state_retrieved1 = cross_link_retrieved1
             .execution_environment_states
             .get(&0)
