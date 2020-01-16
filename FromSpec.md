@@ -160,3 +160,4 @@ Incomplete spec item decisions
 * We're gonna store these on the beacon state
 
 
+On same page now on internal storage, SSZ compatibility, crosslink and EE storage, etc.
