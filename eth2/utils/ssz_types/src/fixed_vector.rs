@@ -71,8 +71,8 @@ impl<T, N: Unsigned> FixedVector<T, N> {
 
     /// Create a new vector filled with clones of `elem`.
     pub fn from_elem(elem: T) -> Self
-        where
-            T: Clone,
+    where
+        T: Clone,
     {
         Self {
             vec: vec![elem; N::to_usize()],
@@ -149,8 +149,8 @@ impl<T, N: Unsigned> Deref for FixedVector<T, N> {
 }
 
 impl<T, N: Unsigned> tree_hash::TreeHash for FixedVector<T, N>
-    where
-        T: tree_hash::TreeHash,
+where
+    T: tree_hash::TreeHash,
 {
     fn tree_hash_type() -> tree_hash::TreeHashType {
         tree_hash::TreeHashType::Vector
@@ -170,8 +170,8 @@ impl<T, N: Unsigned> tree_hash::TreeHash for FixedVector<T, N>
 }
 
 impl<T, N: Unsigned> ssz::Encode for FixedVector<T, N>
-    where
-        T: ssz::Encode,
+where
+    T: ssz::Encode,
 {
     fn is_ssz_fixed_len() -> bool {
         T::is_ssz_fixed_len()
@@ -185,9 +185,9 @@ impl<T, N: Unsigned> ssz::Encode for FixedVector<T, N>
         }
     }
 
-//    fn ssz_bytes_len(&self) -> usize {
-//        self.vec.ssz_bytes_len()
-//    }
+    //    fn ssz_bytes_len(&self) -> usize {
+    //        self.vec.ssz_bytes_len()
+    //    }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
         if T::is_ssz_fixed_len() {
@@ -209,8 +209,8 @@ impl<T, N: Unsigned> ssz::Encode for FixedVector<T, N>
 }
 
 impl<T, N: Unsigned> ssz::Decode for FixedVector<T, N>
-    where
-        T: ssz::Decode + Default,
+where
+    T: ssz::Decode + Default,
 {
     fn is_ssz_fixed_len() -> bool {
         T::is_ssz_fixed_len()
@@ -324,7 +324,7 @@ mod test {
 
     fn ssz_round_trip<T: Encode + Decode + std::fmt::Debug + PartialEq>(item: T) {
         let encoded = &item.as_ssz_bytes();
-//        assert_eq!(item.ssz_bytes_len(), encoded.len());
+        //        assert_eq!(item.ssz_bytes_len(), encoded.len());
         assert_eq!(T::from_ssz_bytes(&encoded), Ok(item));
     }
 

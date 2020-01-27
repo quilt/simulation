@@ -28,8 +28,8 @@ impl<'de> Visitor<'de> for PrefixedHexVisitor {
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
+    where
+        E: de::Error,
     {
         if value.starts_with("0x") {
             Ok(hex::decode(&value[2..])
@@ -50,8 +50,8 @@ impl<'de> Visitor<'de> for HexVisitor {
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
+    where
+        E: de::Error,
     {
         Ok(hex::decode(value.trim_start_matches("0x"))
             .map_err(|e| de::Error::custom(format!("invalid hex ({:?})", e)))?)

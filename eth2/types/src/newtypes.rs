@@ -1,14 +1,14 @@
 // Many patterns here copied from sigp/lighthouse with some small modifications
-use fixed_hash::{construct_fixed_hash};
+use fixed_hash::construct_fixed_hash;
 
 // Necessary for impl_common macro
 use serde::{Deserialize, Serialize};
 use slog;
+use ssz::{ssz_encode, Decode, DecodeError, Encode};
 use std::cmp::{Ord, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(transparent)]

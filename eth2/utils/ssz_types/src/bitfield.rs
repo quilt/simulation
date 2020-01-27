@@ -477,11 +477,11 @@ impl<N: Unsigned + Clone> Encode for Bitfield<Variable<N>> {
         false
     }
 
-//    fn ssz_bytes_len(&self) -> usize {
-//        // We could likely do better than turning this into bytes and reading the length, however
-//        // it is kept this way for simplicity.
-//        self.clone().into_bytes().len()
-//    }
+    //    fn ssz_bytes_len(&self) -> usize {
+    //        // We could likely do better than turning this into bytes and reading the length, however
+    //        // it is kept this way for simplicity.
+    //        self.clone().into_bytes().len()
+    //    }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
         buf.append(&mut self.clone().into_bytes())
@@ -505,9 +505,9 @@ impl<N: Unsigned + Clone> Encode for Bitfield<Fixed<N>> {
         true
     }
 
-//    fn ssz_bytes_len(&self) -> usize {
-//        self.as_slice().len()
-//    }
+    //    fn ssz_bytes_len(&self) -> usize {
+    //        self.as_slice().len()
+    //    }
 
     fn ssz_fixed_len() -> usize {
         bytes_for_bit_len(N::to_usize())
@@ -537,8 +537,8 @@ impl<N: Unsigned + Clone> Decode for Bitfield<Fixed<N>> {
 impl<N: Unsigned + Clone> Serialize for Bitfield<Variable<N>> {
     /// Serde serialization is compliant with the Ethereum YAML test format.
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&hex_encode(self.as_ssz_bytes()))
     }
@@ -547,8 +547,8 @@ impl<N: Unsigned + Clone> Serialize for Bitfield<Variable<N>> {
 impl<'de, N: Unsigned + Clone> Deserialize<'de> for Bitfield<Variable<N>> {
     /// Serde serialization is compliant with the Ethereum YAML test format.
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
         Self::from_ssz_bytes(&bytes)
@@ -559,8 +559,8 @@ impl<'de, N: Unsigned + Clone> Deserialize<'de> for Bitfield<Variable<N>> {
 impl<N: Unsigned + Clone> Serialize for Bitfield<Fixed<N>> {
     /// Serde serialization is compliant with the Ethereum YAML test format.
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&hex_encode(self.as_ssz_bytes()))
     }
@@ -569,8 +569,8 @@ impl<N: Unsigned + Clone> Serialize for Bitfield<Fixed<N>> {
 impl<'de, N: Unsigned + Clone> Deserialize<'de> for Bitfield<Fixed<N>> {
     /// Serde serialization is compliant with the Ethereum YAML test format.
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
         Self::from_ssz_bytes(&bytes)
@@ -719,17 +719,17 @@ mod bitvector {
         assert_eq!(T::from_ssz_bytes(&t.as_ssz_bytes()).unwrap(), t);
     }
 
-//    #[test]
-//    fn ssz_bytes_len() {
-//        for i in 0..64 {
-//            let mut bitfield = BitVector64::new();
-//            for j in 0..i {
-//                bitfield.set(j, true).expect("should set bit in bounds");
-//            }
-//            let bytes = bitfield.as_ssz_bytes();
-//            assert_eq!(bitfield.ssz_bytes_len(), bytes.len(), "i = {}", i);
-//        }
-//    }
+    //    #[test]
+    //    fn ssz_bytes_len() {
+    //        for i in 0..64 {
+    //            let mut bitfield = BitVector64::new();
+    //            for j in 0..i {
+    //                bitfield.set(j, true).expect("should set bit in bounds");
+    //            }
+    //            let bytes = bitfield.as_ssz_bytes();
+    //            assert_eq!(bitfield.ssz_bytes_len(), bytes.len(), "i = {}", i);
+    //        }
+    //    }
 
     #[test]
     fn excess_bits_nimbus() {
@@ -1184,15 +1184,15 @@ mod bitlist {
         );
     }
 
-//    #[test]
-//    fn ssz_bytes_len() {
-//        for i in 1..64 {
-//            let mut bitfield = BitList1024::with_capacity(i).unwrap();
-//            for j in 0..i {
-//                bitfield.set(j, true).expect("should set bit in bounds");
-//            }
-//            let bytes = bitfield.as_ssz_bytes();
-//            assert_eq!(bitfield.ssz_bytes_len(), bytes.len(), "i = {}", i);
-//        }
-//    }
+    //    #[test]
+    //    fn ssz_bytes_len() {
+    //        for i in 1..64 {
+    //            let mut bitfield = BitList1024::with_capacity(i).unwrap();
+    //            for j in 0..i {
+    //                bitfield.set(j, true).expect("should set bit in bounds");
+    //            }
+    //            let bytes = bitfield.as_ssz_bytes();
+    //            assert_eq!(bitfield.ssz_bytes_len(), bytes.len(), "i = {}", i);
+    //        }
+    //    }
 }

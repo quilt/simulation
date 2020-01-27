@@ -6,9 +6,9 @@ use typenum::Unsigned;
 /// A helper function providing common functionality between the `TreeHash` implementations for
 /// `FixedVector` and `VariableList`.
 pub fn vec_tree_hash_root<T, N>(vec: &[T]) -> Vec<u8>
-    where
-        T: TreeHash,
-        N: Unsigned,
+where
+    T: TreeHash,
+    N: Unsigned,
 {
     let (leaves, minimum_chunk_count) = match T::tree_hash_type() {
         TreeHashType::Basic => {

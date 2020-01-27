@@ -176,8 +176,8 @@ impl<'a, T, N: Unsigned> IntoIterator for &'a VariableList<T, N> {
 }
 
 impl<T, N: Unsigned> tree_hash::TreeHash for VariableList<T, N>
-    where
-        T: tree_hash::TreeHash,
+where
+    T: tree_hash::TreeHash,
 {
     fn tree_hash_type() -> tree_hash::TreeHashType {
         tree_hash::TreeHashType::List
@@ -199,8 +199,8 @@ impl<T, N: Unsigned> tree_hash::TreeHash for VariableList<T, N>
 }
 
 impl<T, N: Unsigned> ssz::Encode for VariableList<T, N>
-    where
-        T: ssz::Encode,
+where
+    T: ssz::Encode,
 {
     fn is_ssz_fixed_len() -> bool {
         <Vec<T>>::is_ssz_fixed_len()
@@ -210,9 +210,9 @@ impl<T, N: Unsigned> ssz::Encode for VariableList<T, N>
         <Vec<T>>::ssz_fixed_len()
     }
 
-//    fn ssz_bytes_len(&self) -> usize {
-//        self.vec.ssz_bytes_len()
-//    }
+    //    fn ssz_bytes_len(&self) -> usize {
+    //        self.vec.ssz_bytes_len()
+    //    }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
         self.vec.ssz_append(buf)
@@ -220,8 +220,8 @@ impl<T, N: Unsigned> ssz::Encode for VariableList<T, N>
 }
 
 impl<T, N: Unsigned> ssz::Decode for VariableList<T, N>
-    where
-        T: ssz::Decode,
+where
+    T: ssz::Decode,
 {
     fn is_ssz_fixed_len() -> bool {
         <Vec<T>>::is_ssz_fixed_len()
@@ -310,7 +310,7 @@ mod test {
 
     fn round_trip<T: Encode + Decode + std::fmt::Debug + PartialEq>(item: T) {
         let encoded = &item.as_ssz_bytes();
-//        assert_eq!(item.ssz_bytes_len(), encoded.len());
+        //        assert_eq!(item.ssz_bytes_len(), encoded.len());
         assert_eq!(T::from_ssz_bytes(&encoded), Ok(item));
     }
 

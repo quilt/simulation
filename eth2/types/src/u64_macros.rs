@@ -205,9 +205,9 @@ macro_rules! impl_ssz {
 
             // Commented after copying from sigp/lighthouse
             // Not a member of the eth2_ssz library's trait `Encode`
-//            fn ssz_bytes_len(&self) -> usize {
-//                0_u64.ssz_bytes_len()
-//            }
+            //            fn ssz_bytes_len(&self) -> usize {
+            //                0_u64.ssz_bytes_len()
+            //            }
 
             fn ssz_append(&self, buf: &mut Vec<u8>) {
                 self.0.ssz_append(buf)
@@ -246,11 +246,11 @@ macro_rules! impl_ssz {
             }
         }
 
-//        impl TestRandom for $type {
-//            fn random_for_test(rng: &mut impl RngCore) -> Self {
-//                $type::from(u64::random_for_test(rng))
-//            }
-//        }
+        //        impl TestRandom for $type {
+        //            fn random_for_test(rng: &mut impl RngCore) -> Self {
+        //                $type::from(u64::random_for_test(rng))
+        //            }
+        //        }
     };
 }
 

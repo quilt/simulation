@@ -2,11 +2,11 @@
 use crate::beacon_state::BeaconState;
 use crate::newtypes::Epoch;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use typenum::{
     Unsigned, U0, U1, U1024, U1099511627776, U128, U16, U16777216, U2048, U32, U4, U4096, U64,
     U65536, U8, U8192,
 };
-use std::fmt::Debug;
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
