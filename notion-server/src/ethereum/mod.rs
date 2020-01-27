@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 mod dispatch;
+mod types;
 
 use base64;
 

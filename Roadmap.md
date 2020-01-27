@@ -19,8 +19,8 @@ We anticipate adding many more methods in the future, but here are the functions
 // Add a new execution environment, return EE index
 fn create_execution_environment(a: args::CreateExecutionEnvironment) -> u32 {}
 
-// Add a new shard block containing a list of transactions
-// that need to be executed, return ShardBlock index
+// Add a new shard block containing a list of transactions that need to be executed
+// Execute all transactions on the appropriate shards / EEs, return ShardBlock index
 fn create_shard_block(args: args::CreateShardBlock) -> u32 {}
 
 // Get an EE that was previously added
@@ -86,9 +86,11 @@ struct ShardBlock {
 Note: this does not follow the spec exactly, but is useful for being able to execute a pre-bundled set of transactions on an EE via the `create_shard_block` function above.
 If necessary, this interface (and the associated structs) may change in the future.
 
+***
+
 `ExecutionEnvironments` will have shard-specific state, which will be stored as 32 bytes of arbitrary data (in most EEs, this 32 bytes is expected to be used to store the root hash of the EE's state tree) 
 
-This shard-specific state will be stored on the [the spec's]() `ShardState` struct as follows:
+This shard-specific state will be stored on the [the spec's](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase1/shard-data-chains.md) `ShardState` struct as follows:
 ```rust
 struct ShardState {
     // ...(fields from the spec here)
@@ -146,6 +148,8 @@ However, one effort currently being worked on in parallel is to create one or mo
     * One likely solution here is to have the EE make use of a host function that eg. logs out every state change as the transactions are executed.
     * In this way, an outside observer can replay all transactions, making note of the log statements, to observe the internal virtual state of the EE.
 * etc.
+
+The simulation should add whatever features are necessary to be compatible with this work. 
 
 ## Goal 2+: Keep up-to-date with the spec and add features as-necessary to support users
 
