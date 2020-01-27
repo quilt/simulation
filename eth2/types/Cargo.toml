@@ -1,0 +1,26 @@
+[package]
+name = "types"
+version = "0.1.0"
+authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eth2_ssz = "0.1.2"
+eth2_ssz_derive = "0.1.0"
+fixed-hash = "0.5.2"
+hex = "0.3"
+int_to_bytes = { path = "../utils/int_to_bytes" }
+rand = "0.7.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.45"
+slog = "2.5.2"
+ssz_types = { path = "../utils/ssz_types" }
+tree_hash = "0.1.0"
+tree_hash_derive = "0.1"
+typenum = "1.11.2"
+
+[dev-dependencies]
+serde_yaml = "0.8.11"
+tempfile = "3.1.0"
