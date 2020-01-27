@@ -16,7 +16,7 @@ ewasm = "0.2.2"
 futures-util = "0.3.1"
 # Rocket depends on an older version of `cookie`, which depends on an older
 # version of `ring`, which conflicts with the newer version required in other packages
-# Disabling cookie support addresses this issue.
+# Disabling cookie support with `default-features=false` avoids this issue.
 rocket = { version= "0.4.2", default-features=false }
 rocket_contrib = "0.4.2"
 serde = { version = "1.0", features = ["derive"] }
