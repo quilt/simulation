@@ -1,4 +1,4 @@
-// Copied (potentially with slight modifications and deletions) from sigp/lighthouse
+// Copied from the file of the same name in the https://github.com/sigp/lighthouse repo.
 
 use crate::tree_hash::vec_tree_hash_root;
 use crate::Error;

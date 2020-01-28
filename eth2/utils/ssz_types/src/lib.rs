@@ -1,4 +1,6 @@
-// Copied (potentially with slight modifications and deletions) from sigp/lighthouse
+// Copied from the file of the same name in the https://github.com/sigp/lighthouse repo with some
+// modifications and deletions.  Specifically, removed all code not needed for this repo and updated
+// the Encode implementation here to match the Encode trait of the eth2_ssz crate.
 
 //! Provides types with unique properties required for SSZ serialization and Merklization:
 //!

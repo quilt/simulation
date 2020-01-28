@@ -1,4 +1,5 @@
-// Copied (potentially with slight modifications and deletions) from sigp/lighthouse
+// Copied from the file of the same name in the https://github.com/sigp/lighthouse repo with some
+// modifications and deletions.  Specifically, removed all code not needed for this repo.
 
 use hex;
 use hex::ToHex;

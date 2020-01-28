@@ -1,4 +1,6 @@
-// Copied from sigp/lighthouse with some modifications and deletions
+// Copied from file of the same name at https://github.com/sigp/lighthouse
+// with some modifications and deletions. Specifically, removed code that wasn't necessary for this
+// repository, updated to use explicit imports, and added additional values to the spec definition.
 use crate::beacon_state::BeaconState;
 use crate::newtypes::Epoch;
 use serde::{Deserialize, Serialize};

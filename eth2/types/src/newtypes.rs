@@ -1,4 +1,9 @@
-// Many patterns here copied from sigp/lighthouse with some small modifications
+// Many patterns copied from the slot_epoch.rs file in the
+// https://github.com/sigp/lighthouse repo with some small modifications.  Specifically, added new
+// types, and removed code not needed for this repo.
+// The analog of the `Root` struct in this repo is H256 in lighthouse (and in some other
+// ethereum-focused crates). Decided to use `Root` in this repo instead of `H256` because the spec
+// refers to the data type as a `Root`.  This can be changed in the future if necessary.
 use fixed_hash::construct_fixed_hash;
 
 // Necessary for impl_common macro

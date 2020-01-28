@@ -1,4 +1,5 @@
-// Copied from sigp/lighthouse with some modifications and deletions
+// Copied from the file of the same name in the https://github.com/sigp/lighthouse repo with some
+// modifications and deletions.  Specifically, removed all code not needed for this repo.
 use bytes::{BufMut, BytesMut};
 
 /// Returns `int` as little-endian bytes with a length of 32.

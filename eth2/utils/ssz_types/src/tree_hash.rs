@@ -1,4 +1,4 @@
-// Copied (potentially with slight modifications and deletions) from sigp/lighthouse
+// Copied from the file of the same name in the https://github.com/sigp/lighthouse repo.
 
 use tree_hash::{merkle_root, TreeHash, TreeHashType, BYTES_PER_CHUNK};
 use typenum::Unsigned;

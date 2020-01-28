@@ -1,9 +1,8 @@
 [package]
 name = "int_to_bytes"
 version = "0.1.0"
-# Not really -- this package was copied from sigp/lighthouse (with some very slight
-# modifications and deletions to make it compatible with the code in this repository),
-# TODO: If there's a better way to give credit here, update this.
+# Not really -- this package was copied from https://github.com/sigp/lighthouse (with some slight
+# modifications and deletions, detailed at the top of the lib.rs file)
 authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
 edition = "2018"
 

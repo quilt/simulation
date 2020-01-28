@@ -1,4 +1,6 @@
-// Copied from sigp/lighthouse with some small modifications
+// Copied from the slot_epoch_macros.rs file in https://github.com/sigp/lighthouse with some small
+// modifications.  Specifically, updated ssz macro to match the eth2_ssz crate's Encode trait, which
+// is slightly different than the Encode trait used internally in the sigp/lighthouse repo.
 
 macro_rules! impl_from_into_u64 {
     ($main: ident) => {

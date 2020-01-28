@@ -1,4 +1,4 @@
-// Makes heavy use of patterns and code found in sigp/lighthouse
+// Makes use of patterns and code found in https://github.com/sigp/lighthouse
 use crate::cross_link::CrossLink;
 use crate::eth_spec::EthSpec;
 use crate::execution_environment::ExecutionEnvironment;
