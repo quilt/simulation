@@ -1,5 +1,8 @@
 [workspace]
 members = [
+    "eth2/types",
+    "eth2/utils/int_to_bytes",
+    "eth2/utils/ssz_types",
     'notion-cli',
     'notion-server',
 ]

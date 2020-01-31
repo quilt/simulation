@@ -1,0 +1,12 @@
+[package]
+name = "serde_hex"
+version = "0.1.0"
+# Not really -- this package was copied from https://github.com/sigp/lighthouse (with some slight
+# modifications and deletions, detailed at the top of the lib.rs file)
+# (sigp/lighthouse license: https://github.com/sigp/lighthouse/blob/master/LICENSE)
+authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde = "1.0.102"
+hex = "0.3"
