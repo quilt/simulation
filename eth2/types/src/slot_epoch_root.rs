@@ -29,10 +29,15 @@ pub struct Shard(u64);
 #[serde(transparent)]
 pub struct ShardSlot(u64);
 
+#[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct EEIndex(u64);
+
 impl_common!(Slot);
 impl_common!(Epoch);
 impl_common!(Shard);
 impl_common!(ShardSlot);
+impl_common!(EEIndex);
 
 construct_fixed_hash! {
     #[derive(Serialize, Deserialize)]
