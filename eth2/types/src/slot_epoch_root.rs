@@ -8,7 +8,6 @@ use fixed_hash::construct_fixed_hash;
 
 // Necessary for impl_common macro
 use serde::{Deserialize, Serialize};
-use slog;
 use ssz::{ssz_encode, Decode, DecodeError, Encode};
 use std::cmp::{Ord, Ordering};
 use std::fmt;

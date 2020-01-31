@@ -1,4 +1,4 @@
-use crate::newtypes::{Root, Slot};
+use crate::slot_epoch_root::{Root, Slot};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::VariableList;

@@ -2,7 +2,7 @@
 use crate::cross_link::CrossLink;
 use crate::eth_spec::EthSpec;
 use crate::execution_environment::ExecutionEnvironment;
-use crate::newtypes::{Root, Slot};
+use crate::slot_epoch_root::{Root, Slot};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use ssz::{Decode, Encode};

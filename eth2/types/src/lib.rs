@@ -5,4 +5,4 @@ pub mod beacon_state;
 pub mod cross_link;
 pub mod eth_spec;
 pub mod execution_environment;
-pub mod newtypes;
+pub mod slot_epoch_root;
