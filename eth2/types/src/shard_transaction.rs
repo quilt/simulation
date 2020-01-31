@@ -1,4 +1,4 @@
-use crate::newtypes::EEIndex;
+use crate::slot_epoch_root::EEIndex;
 use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};

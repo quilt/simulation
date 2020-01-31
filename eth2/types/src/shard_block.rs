@@ -1,4 +1,4 @@
-use crate::newtypes::ShardSlot;
+use crate::slot_epoch_root::ShardSlot;
 use crate::shard_transaction::ShardTransaction;
 use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
