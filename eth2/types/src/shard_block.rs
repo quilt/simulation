@@ -1,5 +1,5 @@
-use crate::slot_epoch_root::ShardSlot;
 use crate::shard_transaction::ShardTransaction;
+use crate::slot_epoch_root::ShardSlot;
 use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};

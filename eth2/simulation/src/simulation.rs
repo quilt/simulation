@@ -1,19 +1,11 @@
-use crate::errors::{
-    Result,
-    WhatBound,
-};
+use crate::errors::{Result, WhatBound};
 use crate::store::Store;
-use types::eth_spec::{EthSpec};
-use types::slot_epoch_root::{
-    EEIndex,
-    Root,
-    Shard,
-    ShardSlot,
-};
+use types::eth_spec::EthSpec;
 use types::execution_environment::ExecutionEnvironment;
 use types::shard_block::ShardBlock;
 use types::shard_state::ShardState;
 use types::shard_transaction::ShardTransaction;
+use types::slot_epoch_root::{EEIndex, Root, Shard, ShardSlot};
 
 pub struct Simulation<T>
 where
@@ -35,7 +27,9 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get an EE that was previously added
-    fn get_execution_environment(args: args::GetExecutionEnvironment) -> Result<ExecutionEnvironment> {
+    fn get_execution_environment(
+        args: args::GetExecutionEnvironment,
+    ) -> Result<ExecutionEnvironment> {
         unimplemented!();
     }
 

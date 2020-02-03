@@ -1,5 +1,5 @@
-use std::fmt;
 use snafu::{Backtrace, OptionExt, ResultExt, Snafu};
+use std::fmt;
 
 /// Shorthand for result types returned from the Simulation simulation.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
@@ -23,8 +23,5 @@ impl fmt::Display for WhatBound {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("no {} exists at index: {}", what, index))]
-    OutOfBounds {
-        what: WhatBound,
-        index: usize,
-    },
+    OutOfBounds { what: WhatBound, index: usize },
 }
