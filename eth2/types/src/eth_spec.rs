@@ -59,6 +59,13 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     //    // NOTE: we could safely instantiate this by using type-level arithmetic, but doing
     //    // so adds ~25s to the time required to type-check this crate
     //    type MaxPendingAttestations: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+
+    //    /// Must be set to `MaxEarlyDerivedSecretReveals * SlotsPerEpoch
+    //    type MaxEarlyDerivedSecretRevealsPerEpoch: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    //    // Phase 1
+    //    type EarlyDerivedSecretPenaltyMaxFutureEpochs: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+
+    type MaxShards: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 }
 
 /// Ethereum Foundation specifications.
@@ -86,6 +93,7 @@ impl EthSpec for MainnetEthSpec {
     //    type MaxDeposits = U16;
     //    type MaxVoluntaryExits = U16;
     //    type MaxPendingAttestations = U4096; // 128 max attestations * 32 slots per epoch
+    type MaxShards = U1024;
 }
 
 pub type FoundationBeaconState = BeaconState<MainnetEthSpec>;
