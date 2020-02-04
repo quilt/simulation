@@ -59,6 +59,7 @@ mod args {
     use super::*;
 
     pub struct CreateExecutionEnvironment {
+        initial_state: Root,
         wasm_code: Vec<u8>,
     }
     pub struct CreateShardBlock {
