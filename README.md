@@ -51,11 +51,6 @@ struct ExecutionEnvironment {
     wasm_code: Vec<u8>,
 }
 
-struct CrossLink {
-    // Crosslinks can also include root hashes for previous slots
-    roots: Vec<Slot, [u8; 32]>,
-}
-
 // Represents a transaction on a specific shard for a specific execution environment
 struct ShardTransaction {
     // Arbitrary-length bytes included with the transaction
@@ -66,14 +61,13 @@ struct ShardTransaction {
 }
 ```
 
-`ExecutionEnvironment` and `CrossLink` will be stored in the simulation on [the spec's](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md) `BeaconState` struct as follows:
+`ExecutionEnvironment` will be stored in the simulation on [the spec's](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md) `BeaconState` struct as follows:
+*Note: "Crosslinked" shard state was recently "specced", and is stored on `BeaconState.shard_states`*
 ```rust
 struct BeaconState {
     // ...(fields from the spec here)
     // ...(minus any unneeded fields)
     
-    // SHARD_COUNT = 64
-    cross_links: [CrossLink; SHARD_COUNT],
     execution_environments: Vec<ExecutionEnvironment>
 }
 ```
@@ -83,7 +77,7 @@ struct ShardBlock {
     transactions: Vec<ShardTransaction>,
 }
 ```
-Note: this does not follow the spec exactly, but is useful for being able to execute a pre-bundled set of transactions on an EE via the `create_shard_block` function above.
+Note: this may not follow the spec exactly, but is useful for being able to execute a pre-bundled set of transactions on an EE via the `create_shard_block` function above.
 If necessary, this interface (and the associated structs) may change in the future.
 
 ***
