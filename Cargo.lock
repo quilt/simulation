@@ -1073,6 +1073,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "simulation"
+version = "0.1.0"
+dependencies = [
+ "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
+]
+
+[[package]]
 name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,0 +1,10 @@
+[package]
+name = "simulation"
+version = "0.1.0"
+authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+snafu = "0.6.0"
+types = { path = "../types" }
+

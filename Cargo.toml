@@ -3,6 +3,7 @@ members = [
     "eth2/types",
     "eth2/utils/int_to_bytes",
     "eth2/utils/ssz_types",
+    "eth2/simulation",
     'notion-cli',
     'notion-server',
 ]
