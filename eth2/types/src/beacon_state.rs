@@ -1,7 +1,7 @@
 // Makes use of patterns and code found in https://github.com/sigp/lighthouse
-use crate::cross_link::CrossLink;
 use crate::eth_spec::EthSpec;
 use crate::execution_environment::ExecutionEnvironment;
+use crate::shard_state::ShardState;
 use crate::slot_epoch_root::{Root, Slot};
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -40,13 +40,14 @@ where
     //    balances: VariableList<Gwei, T::ValidatorRegistryLimit>,
 
     // Randomness
-    //    randao_mixes: FixedVector<Gwei, T::EpochsPerHistoricalVector>,
+    //    randao_mixes: FixedVector<Root, T::EpochsPerHistoricalVector>,
 
     // Slashings
     //    slashings: FixedVector<Gwei, T::EpochsPerSlashingsVector>,
 
     // Attestations
     //    previous_epoch_attestations: VariableList<PendingAttestation, T::MaxPendingAttestations>,
+    //    current_epoch_attestations: VariableList<PendingAttestation, T::MaxPendingAttestations>,
 
     // Finality
     //    justification_bits: BitVector<T::JustificationBitsLength>,
@@ -54,8 +55,16 @@ where
     //    current_justified_checkpoint: Checkpoint,
     //    finalized_checkpoint: Checkpoint,
 
+    // Phase 1
+    shard_states: VariableList<ShardState, T::MaxShards>,
+    //    online_countdown: VariableList<OnlineEpochs, T::ValidatorRegistryLimit>,
+    //    current_light_committee: CompactCommittee,
+    //    next_light_committee: CompactCommittee,
+
+    // Custody game
+    //    exposed_derived_secrets: FixedVector<VariableList<ValidatorIndex, T::MaxEarlyDerivedSecretRevealsPerEpoch>, T::EarlyDerivedSecretPenaltyMaxFutureEpochs>,
+
     // Unspecced fields
-    cross_links: FixedVector<CrossLink, T::ShardCount>,
     execution_environments: VariableList<ExecutionEnvironment, T::MaxExecutionEnvironments>,
 }
 
@@ -63,7 +72,7 @@ impl<T: EthSpec> BeaconState<T> {
     fn new() -> Self {
         Self {
             slot: Slot::new(0),
-            cross_links: FixedVector::from_elem(CrossLink::default()),
+            shard_states: VariableList::empty(),
             execution_environments: VariableList::empty(),
         }
     }
