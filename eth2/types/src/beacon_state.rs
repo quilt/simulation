@@ -56,7 +56,7 @@ where
     //    finalized_checkpoint: Checkpoint,
 
     // Phase 1
-    shard_states: VariableList<ShardState, T::MaxShards>,
+    pub shard_states: VariableList<ShardState<T>, T::MaxShards>,
     //    online_countdown: VariableList<OnlineEpochs, T::ValidatorRegistryLimit>,
     //    current_light_committee: CompactCommittee,
     //    next_light_committee: CompactCommittee,
@@ -65,11 +65,12 @@ where
     //    exposed_derived_secrets: FixedVector<VariableList<ValidatorIndex, T::MaxEarlyDerivedSecretRevealsPerEpoch>, T::EarlyDerivedSecretPenaltyMaxFutureEpochs>,
 
     // Unspecced fields
-    execution_environments: VariableList<ExecutionEnvironment, T::MaxExecutionEnvironments>,
+    pub execution_environments: VariableList<ExecutionEnvironment, T::MaxExecutionEnvironments>,
 }
 
 impl<T: EthSpec> BeaconState<T> {
-    fn new() -> Self {
+    pub fn new() -> Self {
+        // shard_states should initialize shard for each ShardCount
         Self {
             slot: Slot::new(0),
             shard_states: VariableList::empty(),

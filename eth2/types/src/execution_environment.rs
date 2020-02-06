@@ -1,3 +1,4 @@
+use crate::slot_epoch_root::{Root};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::VariableList;
@@ -7,5 +8,6 @@ use typenum::U262144;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Encode, Decode)]
 pub struct ExecutionEnvironment {
-    wasm_code: VariableList<u8, U262144>,
+    pub initial_state: Root,
+    pub wasm_code: VariableList<u8, U262144>,
 }

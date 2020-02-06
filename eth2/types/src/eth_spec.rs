@@ -14,7 +14,6 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
      * Unspecced values
      */
-    type ShardCount: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
     //    /*
@@ -75,7 +74,6 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
 pub struct MainnetEthSpec;
 
 impl EthSpec for MainnetEthSpec {
-    type ShardCount = U64;
     type MaxExecutionEnvironments = U65536;
     //    type JustificationBitsLength = U4;
     //    type MaxValidatorsPerCommittee = U2048;

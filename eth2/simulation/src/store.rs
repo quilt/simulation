@@ -10,5 +10,13 @@ pub struct Store<T>
 where
     T: EthSpec,
 {
-    current_beacon_state: BeaconState<T>,
+    pub current_beacon_state: BeaconState<T>,
+}
+
+impl<T: EthSpec> Store<T> {
+    pub fn new() -> Self {
+        Self {
+            current_beacon_state: BeaconState::new(),
+        }
+    }
 }
