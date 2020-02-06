@@ -15,36 +15,54 @@ where
 }
 
 impl<T: EthSpec> Simulation<T> {
+    pub fn new() -> Self {
+        Self {
+            store: Store::new(),
+        }
+    }
+
     /// Add a new execution environment, return EE index
-    fn create_execution_environment(a: args::CreateExecutionEnvironment) -> EEIndex {
-        unimplemented!();
+    pub fn create_execution_environment(&mut self, a: args::CreateExecutionEnvironment) -> EEIndex {
+        // Add EE code to beacon chain
+        let ee = ExecutionEnvironment {
+            initial_state: a.initial_state,
+            wasm_code: VariableList::new(a.wasm_code),
+        };
+        self.store.current_beacon_state.execution_environments.push(ee).unwrap();
+
+        // For each shard, add the initial state
+//        self.store.current_beacon_state.shard_states
+
+
+        EEIndex(self.store.current_beacon_state.execution_environments.len() as u64)
     }
 
     /// Add a new shard block containing a list of transactions that need to be executed
     /// Execute all transactions on the appropriate shards / EEs, return ShardBlock index
-    fn create_shard_block(args: args::CreateShardBlock) -> ShardSlot {
+    pub fn create_shard_block(&self, args: args::CreateShardBlock) -> ShardSlot {
         unimplemented!();
     }
 
     /// Get an EE that was previously added
-    fn get_execution_environment(
+    pub fn get_execution_environment(
+        &self,
         args: args::GetExecutionEnvironment,
     ) -> Result<ExecutionEnvironment> {
         unimplemented!();
     }
 
     /// Get the current state of an execution environment on a shard
-    fn get_execution_environment_state(args: args::GetExecutionEnvironmentState) -> Result<Root> {
+    pub fn get_execution_environment_state(&self, args: args::GetExecutionEnvironmentState) -> Result<Root> {
         unimplemented!();
     }
 
     /// Get a shard block that was previously added
-    fn get_shard_block(args: args::GetShardBlock) -> Result<ShardBlock> {
+    pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<ShardBlock> {
         unimplemented!();
     }
 
     /// Get the specified ShardState, will contain EE states
-    fn get_shard_state(args: args::GetShardState) -> ShardState {
+    pub fn get_shard_state(&self, args: args::GetShardState) -> ShardState<T> {
         unimplemented!();
     }
 }
@@ -59,8 +77,8 @@ mod args {
     use super::*;
 
     pub struct CreateExecutionEnvironment {
-        initial_state: Root,
-        wasm_code: Vec<u8>,
+        pub initial_state: Root,
+        pub wasm_code: Vec<u8>,
     }
     pub struct CreateShardBlock {
         shard: Shard,
