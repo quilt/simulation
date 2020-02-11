@@ -74,6 +74,7 @@ impl ShardSlot {
     }
 }
 
+/// Convert from a hex string to a Root
 impl TryFrom<&str> for Root {
     type Error = String;
 
