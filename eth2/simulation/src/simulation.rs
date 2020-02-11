@@ -133,17 +133,27 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get the current state of an execution environment on a shard
-    pub fn get_execution_environment_state(&self, args: args::GetExecutionEnvironmentState) -> Result<Root> {
-        unimplemented!();
+    pub fn get_execution_environment_state(&self, a: args::GetExecutionEnvironmentState) -> Result<Root> {
+        let ee_index: usize = a.ee_index.into();
+        let shard_index: usize = a.shard.into();
+        let shard_state = self.store.current_beacon_state.shard_states.get(shard_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::Shard,
+            index: shard_index,
+        })?;
+        let ee_state_root = shard_state.execution_environment_states.get(ee_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::ExecutionEnvironmentState,
+            index: ee_index,
+        })?;
+        Ok(ee_state_root.clone())
     }
 
     /// Get a shard block that was previously added
-    pub fn get_shard_block(&self, args: args::GetShardBlock) -> Result<ShardBlock> {
+    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock> {
         unimplemented!();
     }
 
     /// Get the specified ShardState, will contain EE states
-    pub fn get_shard_state(&self, args: args::GetShardState) -> ShardState<T> {
+    pub fn get_shard_state(&self, a: args::GetShardState) -> ShardState<T> {
         unimplemented!();
     }
 }
