@@ -2,10 +2,10 @@
 use crate::eth_spec::EthSpec;
 use crate::execution_environment::ExecutionEnvironment;
 use crate::shard_state::ShardState;
-use crate::slot_epoch_root::{Slot};
+use crate::slot_epoch_root::Slot;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
-use ssz_types::{VariableList};
+use ssz_types::VariableList;
 // Traits must be in scope in order to use items on the trait
 use typenum::marker_traits::Unsigned;
 
@@ -86,8 +86,8 @@ impl<T: EthSpec> BeaconState<T> {
 mod tests {
     use super::*;
     // Can't use these traits unless they're imported
-    use ssz::{Decode, Encode};
     use crate::eth_spec::MainnetEthSpec;
+    use ssz::{Decode, Encode};
 
     #[test]
     fn can_encode_and_decode_ssz() {
