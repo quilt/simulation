@@ -122,9 +122,14 @@ impl<T: EthSpec> Simulation<T> {
     /// Get an EE that was previously added
     pub fn get_execution_environment(
         &self,
-        args: args::GetExecutionEnvironment,
+        a: args::GetExecutionEnvironment,
     ) -> Result<ExecutionEnvironment> {
-        unimplemented!();
+        let ee_index: usize = a.ee_index.into();
+        let ee = self.store.current_beacon_state.execution_environments.get(ee_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::ExecutionEnvironment,
+            index: ee_index,
+        })?;
+        Ok(ee.clone())
     }
 
     /// Get the current state of an execution environment on a shard
@@ -161,18 +166,18 @@ mod args {
         pub shard_transactions: Vec<ShardTransaction>,
     }
     pub struct GetExecutionEnvironment {
-        ee_index: EEIndex,
+        pub ee_index: EEIndex,
     }
     pub struct GetExecutionEnvironmentState {
-        ee_index: EEIndex,
-        shard: Shard,
+        pub ee_index: EEIndex,
+        pub shard: Shard,
     }
     pub struct GetShardBlock {
-        shard: Shard,
-        shard_slot: ShardSlot,
+        pub shard: Shard,
+        pub shard_slot: ShardSlot,
     }
     pub struct GetShardState {
-        shard: Shard,
+        pub shard: Shard,
     }
 }
 
