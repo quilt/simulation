@@ -59,7 +59,9 @@ impl Epoch {
 }
 
 impl EEIndex {
-    pub fn new(ee_index: u64) -> Self { Self(ee_index) }
+    pub fn new(ee_index: u64) -> Self {
+        Self(ee_index)
+    }
 }
 
 impl Shard {
@@ -79,14 +81,17 @@ impl TryFrom<&str> for Root {
     type Error = String;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-
         let vec = Vec::from_hex(s).map_err(|e| {
             return format!("cannot convert string to hex: {:?}", e);
         })?;
 
         let expected_length: usize = 32;
         if vec.len() != expected_length {
-            return Err(format!("hex string should map to Vec<u8> of len: {}, but has len: {}", expected_length, s.len()));
+            return Err(format!(
+                "hex string should map to Vec<u8> of len: {}, but has len: {}",
+                expected_length,
+                s.len()
+            ));
         }
 
         let mut bytes_slice: [u8; 32] = [0; 32];

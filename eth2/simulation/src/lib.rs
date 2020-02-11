@@ -1,7 +1,7 @@
 mod simulation;
 mod store;
 
-use snafu::{Snafu};
+use snafu::Snafu;
 use std::fmt;
 
 /// Shorthand for result types returned from the Simulation simulation.

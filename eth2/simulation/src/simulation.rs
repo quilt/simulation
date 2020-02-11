@@ -1,7 +1,7 @@
 use crate::store::Store;
-use crate::{Result, Error, WhatBound};
+use crate::{Error, Result, WhatBound};
 use ewasm::{Execute, RootRuntime};
-use ssz_types::{VariableList};
+use ssz_types::VariableList;
 use types::eth_spec::EthSpec;
 use types::execution_environment::ExecutionEnvironment;
 use types::shard_block::ShardBlock;
@@ -24,36 +24,44 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Add a new execution environment, return EE index
-    pub fn create_execution_environment(&mut self, a: args::CreateExecutionEnvironment) -> Result<EEIndex> {
+    pub fn create_execution_environment(
+        &mut self,
+        a: args::CreateExecutionEnvironment,
+    ) -> Result<EEIndex> {
         // Create EE struct from args
-        let vl_wasm_code = VariableList::new(a.wasm_code).map_err(|_| {
-            Error::MaxLengthExceeded {
+        let vl_wasm_code =
+            VariableList::new(a.wasm_code).map_err(|_| Error::MaxLengthExceeded {
                 what: format!("wasm_code"),
-            }
-        })?;
+            })?;
         let ee = ExecutionEnvironment {
             initial_state: a.initial_state,
             wasm_code: vl_wasm_code,
         };
 
         // Add EE code to beacon chain
-        self.store.current_beacon_state.execution_environments.push(ee).map_err(|_| {
-            Error::MaxLengthExceeded {
+        self.store
+            .current_beacon_state
+            .execution_environments
+            .push(ee)
+            .map_err(|_| Error::MaxLengthExceeded {
                 what: format!("number of execution environments"),
-            }
-        })?;
+            })?;
 
         // For each shard, add the initial state to the shard
         for shard_state in self.store.current_beacon_state.shard_states.iter_mut() {
             // Set the initial state of the EE on each ShardState
-            shard_state.execution_environment_states.push(a.initial_state.clone()).map_err(|_| {
-                Error::MaxLengthExceeded {
+            shard_state
+                .execution_environment_states
+                .push(a.initial_state.clone())
+                .map_err(|_| Error::MaxLengthExceeded {
                     what: format!("number of execution environment states"),
-                }
-            })?;
+                })?;
 
             // Each shard should have the same # of ee states as there are EEs
-            assert_eq!(shard_state.execution_environment_states.len(), self.store.current_beacon_state.execution_environments.len());
+            assert_eq!(
+                shard_state.execution_environment_states.len(),
+                self.store.current_beacon_state.execution_environments.len()
+            );
         }
 
         let ee_index = self.store.current_beacon_state.execution_environments.len() - 1;
@@ -65,35 +73,45 @@ impl<T: EthSpec> Simulation<T> {
     pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<ShardSlot> {
         // Get the specified ShardState (if it exists)
         let shard_index: usize = a.shard.into();
-        let shard_state = self.store.current_beacon_state.shard_states.get_mut(shard_index).ok_or(Error::OutOfBounds {
-            what: WhatBound::Shard,
-            index: shard_index,
-        })?;
+        let shard_state = self
+            .store
+            .current_beacon_state
+            .shard_states
+            .get_mut(shard_index)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::Shard,
+                index: shard_index,
+            })?;
 
         // Create the shard block from args
-        let transactions = VariableList::new(a.shard_transactions).map_err(|_| {
-            Error::MaxLengthExceeded {
+        let transactions =
+            VariableList::new(a.shard_transactions).map_err(|_| Error::MaxLengthExceeded {
                 what: format!("number of shard transactions per block"),
-            }
-        })?;
-        let shard_block = ShardBlock {
-            transactions,
-        };
+            })?;
+        let shard_block = ShardBlock { transactions };
 
         // Execute transactions and update shard state for all transactions
         for transaction in shard_block.transactions.iter() {
             // Get the specified EE (if it exists)
             let ee_index: usize = transaction.ee_index.into();
-            let execution_environment = self.store.current_beacon_state.execution_environments.get(ee_index).ok_or(Error::OutOfBounds {
-                what: WhatBound::ExecutionEnvironment,
-                index: ee_index,
-            })?;
+            let execution_environment = self
+                .store
+                .current_beacon_state
+                .execution_environments
+                .get(ee_index)
+                .ok_or(Error::OutOfBounds {
+                    what: WhatBound::ExecutionEnvironment,
+                    index: ee_index,
+                })?;
 
             // Get the current EE state
-            let pre_state = shard_state.execution_environment_states.get(ee_index).ok_or(Error::OutOfBounds {
-                what: WhatBound::ExecutionEnvironmentState,
-                index: ee_index,
-            })?;
+            let pre_state = shard_state
+                .execution_environment_states
+                .get(ee_index)
+                .ok_or(Error::OutOfBounds {
+                    what: WhatBound::ExecutionEnvironmentState,
+                    index: ee_index,
+                })?;
 
             // Create a new runtime with the EE code, transaction data, and pre state root
             let wasm_code: Vec<u8> = execution_environment.wasm_code.clone().into();
@@ -105,18 +123,21 @@ impl<T: EthSpec> Simulation<T> {
 
             // Update shard state with new root
             shard_state.execution_environment_states[ee_index] = Root::from(post_root);
-
         }
 
         // Add shard block to store for later access
-        let shard_blocks_for_shard = self.store.shard_blocks_by_shard.get_mut(&a.shard).ok_or(Error::OutOfBounds {
-            index: shard_index,
-            what: WhatBound::Shard,
-        })?;
+        let shard_blocks_for_shard =
+            self.store
+                .shard_blocks_by_shard
+                .get_mut(&a.shard)
+                .ok_or(Error::OutOfBounds {
+                    index: shard_index,
+                    what: WhatBound::Shard,
+                })?;
         shard_blocks_for_shard.push(shard_block);
 
         // Return the slot of the newly added shard block
-        Ok(ShardSlot::new((shard_blocks_for_shard.len() -1 ) as u64))
+        Ok(ShardSlot::new((shard_blocks_for_shard.len() - 1) as u64))
     }
 
     /// Get an EE that was previously added
@@ -125,25 +146,41 @@ impl<T: EthSpec> Simulation<T> {
         a: args::GetExecutionEnvironment,
     ) -> Result<ExecutionEnvironment> {
         let ee_index: usize = a.ee_index.into();
-        let ee = self.store.current_beacon_state.execution_environments.get(ee_index).ok_or(Error::OutOfBounds {
-            what: WhatBound::ExecutionEnvironment,
-            index: ee_index,
-        })?;
+        let ee = self
+            .store
+            .current_beacon_state
+            .execution_environments
+            .get(ee_index)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::ExecutionEnvironment,
+                index: ee_index,
+            })?;
         Ok(ee.clone())
     }
 
     /// Get the current state of an execution environment on a shard
-    pub fn get_execution_environment_state(&self, a: args::GetExecutionEnvironmentState) -> Result<Root> {
+    pub fn get_execution_environment_state(
+        &self,
+        a: args::GetExecutionEnvironmentState,
+    ) -> Result<Root> {
         let ee_index: usize = a.ee_index.into();
         let shard_index: usize = a.shard.into();
-        let shard_state = self.store.current_beacon_state.shard_states.get(shard_index).ok_or(Error::OutOfBounds {
-            what: WhatBound::Shard,
-            index: shard_index,
-        })?;
-        let ee_state_root = shard_state.execution_environment_states.get(ee_index).ok_or(Error::OutOfBounds {
-            what: WhatBound::ExecutionEnvironmentState,
-            index: ee_index,
-        })?;
+        let shard_state = self
+            .store
+            .current_beacon_state
+            .shard_states
+            .get(shard_index)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::Shard,
+                index: shard_index,
+            })?;
+        let ee_state_root = shard_state
+            .execution_environment_states
+            .get(ee_index)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::ExecutionEnvironmentState,
+                index: ee_index,
+            })?;
         Ok(ee_state_root.clone())
     }
 
@@ -151,10 +188,14 @@ impl<T: EthSpec> Simulation<T> {
     pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock> {
         let shard_index: usize = a.shard.into();
         let shard_block_index: usize = a.shard_slot.into();
-        let shard = self.store.shard_blocks_by_shard.get(&a.shard).ok_or(Error::OutOfBounds {
-            what: WhatBound::Shard,
-            index: shard_index,
-        })?;
+        let shard = self
+            .store
+            .shard_blocks_by_shard
+            .get(&a.shard)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::Shard,
+                index: shard_index,
+            })?;
         let shard_block = shard.get(shard_block_index).ok_or(Error::OutOfBounds {
             what: WhatBound::ShardBlock(shard_index),
             index: shard_block_index,
@@ -165,10 +206,15 @@ impl<T: EthSpec> Simulation<T> {
     /// Get the specified ShardState, will contain EE states
     pub fn get_shard_state(&self, a: args::GetShardState) -> Result<ShardState<T>> {
         let shard_index: usize = a.shard.into();
-        let shard_state = self.store.current_beacon_state.shard_states.get(shard_index).ok_or(Error::OutOfBounds {
-            what: WhatBound::Shard,
-            index: shard_index,
-        })?;
+        let shard_state = self
+            .store
+            .current_beacon_state
+            .shard_states
+            .get(shard_index)
+            .ok_or(Error::OutOfBounds {
+                what: WhatBound::Shard,
+                index: shard_index,
+            })?;
         Ok(shard_state.clone())
     }
 }
@@ -211,26 +257,45 @@ mod tests {
     use super::*;
     use hex::FromHex;
     use std::convert::TryFrom;
-    use types::eth_spec::MainnetEthSpec;
     use typenum::Unsigned;
+    use types::eth_spec::MainnetEthSpec;
 
     #[test]
     fn simulation_new() {
         let simulation: Simulation<MainnetEthSpec> = Simulation::new();
         let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
         // Should have MaxShards shard states
-        assert_eq!(simulation.store.current_beacon_state.shard_states.len(), max_shards);
+        assert_eq!(
+            simulation.store.current_beacon_state.shard_states.len(),
+            max_shards
+        );
         // Should have no ees initially
-        assert_eq!(simulation.store.current_beacon_state.execution_environments.len(), 0);
+        assert_eq!(
+            simulation
+                .store
+                .current_beacon_state
+                .execution_environments
+                .len(),
+            0
+        );
         // Should have no ee states initially
         for i in 0..max_shards {
-            let shard_state = simulation.store.current_beacon_state.shard_states.get(i).unwrap();
+            let shard_state = simulation
+                .store
+                .current_beacon_state
+                .shard_states
+                .get(i)
+                .unwrap();
             assert_eq!(shard_state.execution_environment_states.len(), 0);
         }
         // Should have MaxShards shards, but no shard blocks
         assert_eq!(simulation.store.shard_blocks_by_shard.len(), max_shards);
         for i in 0..max_shards {
-            let shard_blocks_for_shard_i = simulation.store.shard_blocks_by_shard.get(&Shard::new(i as u64)).unwrap();
+            let shard_blocks_for_shard_i = simulation
+                .store
+                .shard_blocks_by_shard
+                .get(&Shard::new(i as u64))
+                .unwrap();
             assert_eq!(shard_blocks_for_shard_i.len(), 0);
         }
     }
@@ -255,9 +320,15 @@ mod tests {
         };
 
         // Calling create_execution_environment repeatedly should return an increasing EE index
-        let ee_index: usize = simulation.create_execution_environment(create_ee_args).unwrap().into();
+        let ee_index: usize = simulation
+            .create_execution_environment(create_ee_args)
+            .unwrap()
+            .into();
         assert_eq!(ee_index, 0);
-        let ee_index2: usize = simulation.create_execution_environment(create_ee_args2).unwrap().into();
+        let ee_index2: usize = simulation
+            .create_execution_environment(create_ee_args2)
+            .unwrap()
+            .into();
         assert_eq!(ee_index2, 1);
 
         // Set up args::GetExecutionEnvironment
@@ -281,12 +352,25 @@ mod tests {
                 ee_index: EEIndex::new(ee_index as u64),
                 shard: Shard::new(i as u64),
             };
-            let ee_state = simulation.get_execution_environment_state(get_ee_state_args).unwrap();
+            let ee_state = simulation
+                .get_execution_environment_state(get_ee_state_args)
+                .unwrap();
             assert_eq!(ee_state, initial_state);
         }
     }
 
-    fn test_block_with_single_transaction(wasm_code: &[u8], initial_state: Root, data: Vec<u8>, expected_post_state: Root, shard: Shard) -> (Simulation<MainnetEthSpec>, ShardTransaction, ShardSlot, EEIndex) {
+    fn test_block_with_single_transaction(
+        wasm_code: &[u8],
+        initial_state: Root,
+        data: Vec<u8>,
+        expected_post_state: Root,
+        shard: Shard,
+    ) -> (
+        Simulation<MainnetEthSpec>,
+        ShardTransaction,
+        ShardSlot,
+        EEIndex,
+    ) {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Create EE with the specified code and initial state
@@ -294,7 +378,9 @@ mod tests {
             initial_state,
             wasm_code: wasm_code.to_vec(),
         };
-        let ee_index = simulation.create_execution_environment(create_ee_args).unwrap();
+        let ee_index = simulation
+            .create_execution_environment(create_ee_args)
+            .unwrap();
         assert_eq!(ee_index, EEIndex::new(0));
 
         // Set up a shard transaction with the specified data
@@ -310,15 +396,19 @@ mod tests {
             shard_transactions: vec![shard_transaction],
         };
         // This creates the block and runs all the transactions inside it
-        let shard_slot = simulation.create_shard_block(create_shard_block_args).unwrap();
+        let shard_slot = simulation
+            .create_shard_block(create_shard_block_args)
+            .unwrap();
 
         // Get back the EE state to make sure it matches the expected_post_state
-        let get_ee_state_args = args::GetExecutionEnvironmentState {
-            ee_index,
-            shard,
-        };
-        let ee_post_state = simulation.get_execution_environment_state(get_ee_state_args).unwrap();
-        assert_eq!(ee_post_state, expected_post_state, "actual post state root should match expected post state root");
+        let get_ee_state_args = args::GetExecutionEnvironmentState { ee_index, shard };
+        let ee_post_state = simulation
+            .get_execution_environment_state(get_ee_state_args)
+            .unwrap();
+        assert_eq!(
+            ee_post_state, expected_post_state,
+            "actual post state root should match expected post state root"
+        );
 
         (simulation, shard_transaction_copy, shard_slot, ee_index)
     }
@@ -329,45 +419,52 @@ mod tests {
         let expected_post_state = Root::from([0; 32]);
         let data: Vec<u8> = Vec::new();
         let shard = Shard::new(0);
-        let (simulation, shard_transaction, shard_slot, ee_index) = test_block_with_single_transaction(
-            include_bytes!("../tests/phase2_helloworld.wasm"),
-            initial_state,
-            data,
-            expected_post_state,
-            shard,
-        );
+        let (simulation, shard_transaction, shard_slot, ee_index) =
+            test_block_with_single_transaction(
+                include_bytes!("../tests/phase2_helloworld.wasm"),
+                initial_state,
+                data,
+                expected_post_state,
+                shard,
+            );
 
         // Test that GetShardBlock is working as expected
-        let get_shard_block_args = args::GetShardBlock {
-            shard,
-            shard_slot,
-        };
+        let get_shard_block_args = args::GetShardBlock { shard, shard_slot };
         let shard_block = simulation.get_shard_block(get_shard_block_args).unwrap();
 
         // Make sure the transaction on the retrieved block matches the transaction
         // on the created block
-        assert_eq!(shard_block.transactions.get(0).unwrap().clone(), shard_transaction);
+        assert_eq!(
+            shard_block.transactions.get(0).unwrap().clone(),
+            shard_transaction
+        );
 
         // Test that GetShardState is working as expected
-        let get_shard_state_args = args::GetShardState {
-            shard,
-        };
+        let get_shard_state_args = args::GetShardState { shard };
         let shard_state = simulation.get_shard_state(get_shard_state_args).unwrap();
         let ee_index: usize = ee_index.into();
-        let ee_state: &Root = shard_state.execution_environment_states.get(ee_index).unwrap();
+        let ee_state: &Root = shard_state
+            .execution_environment_states
+            .get(ee_index)
+            .unwrap();
         assert_eq!(ee_state, &expected_post_state);
     }
     #[test]
     fn run_scout_bazaar_test() {
-        let initial_state = Root::try_from("22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4").unwrap();
-        let expected_post_state = Root::try_from("29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc").unwrap();
+        let initial_state =
+            Root::try_from("22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4")
+                .unwrap();
+        let expected_post_state =
+            Root::try_from("29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc")
+                .unwrap();
         let data: Vec<u8> = Vec::from_hex("5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000").unwrap();
-        let (simulation, shard_transaction, shard_slot, ee_index) = test_block_with_single_transaction(
-            include_bytes!("../tests/phase2_bazaar.wasm"),
-            initial_state,
-            data,
-            expected_post_state,
-            Shard::new(0),
-        );
+        let (simulation, shard_transaction, shard_slot, ee_index) =
+            test_block_with_single_transaction(
+                include_bytes!("../tests/phase2_bazaar.wasm"),
+                initial_state,
+                data,
+                expected_post_state,
+                Shard::new(0),
+            );
     }
 }

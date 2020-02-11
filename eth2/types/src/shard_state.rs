@@ -1,8 +1,8 @@
-use crate::slot_epoch_root::{Root};
+use crate::eth_spec::EthSpec;
+use crate::slot_epoch_root::Root;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
-use ssz_types::{VariableList};
-use crate::eth_spec::EthSpec;
+use ssz_types::VariableList;
 
 #[derive(Default, Debug, PartialEq, Clone, Deserialize, Serialize, DeriveDecode, DeriveEncode)]
 pub struct ShardState<T>
