@@ -163,8 +163,13 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get the specified ShardState, will contain EE states
-    pub fn get_shard_state(&self, a: args::GetShardState) -> ShardState<T> {
-        unimplemented!();
+    pub fn get_shard_state(&self, a: args::GetShardState) -> Result<ShardState<T>> {
+        let shard_index: usize = a.shard.into();
+        let shard_state = self.store.current_beacon_state.shard_states.get(shard_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::Shard,
+            index: shard_index,
+        })?;
+        Ok(shard_state.clone())
     }
 }
 
