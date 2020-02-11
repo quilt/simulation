@@ -56,8 +56,6 @@ where
     //    finalized_checkpoint: Checkpoint,
 
     // Phase 1
-    // TODO: In the spec this is a List (ie. VariableList), but if # of shards is set in stone,
-    // seems like this is better represented as a Vector (ie. FixedVector)
     pub shard_states: VariableList<ShardState<T>, T::MaxShards>,
     //    online_countdown: VariableList<OnlineEpochs, T::ValidatorRegistryLimit>,
     //    current_light_committee: CompactCommittee,
@@ -72,7 +70,7 @@ where
 
 impl<T: EthSpec> BeaconState<T> {
     pub fn new() -> Self {
-        // shard_states should initialize shard for each ShardCount
+        // shard_states should initialize shard for each shard
         let initial_shard_state: ShardState<T> = ShardState::new();
         let shard_states_vec = vec![initial_shard_state; T::MaxShards::to_usize()];
         let shard_states = VariableList::new(shard_states_vec).unwrap();

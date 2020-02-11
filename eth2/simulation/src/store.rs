@@ -25,6 +25,7 @@ where
 impl<T: EthSpec> Store<T> {
 
     pub fn new() -> Self {
+        // Initialize shard blocks storage for all shards
         let mut shard_blocks_by_shard = HashMap::new();
         for shard in 0..T::MaxShards::to_u64() {
             let shard = Shard::new(shard);
