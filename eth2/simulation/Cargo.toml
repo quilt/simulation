@@ -6,5 +6,6 @@ edition = "2018"
 
 [dependencies]
 snafu = "0.6.0"
+ssz_types = { path = "../utils/ssz_types" }
 types = { path = "../types" }
-
+typenum = "1.11.2"

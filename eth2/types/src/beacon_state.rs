@@ -2,12 +2,12 @@
 use crate::eth_spec::EthSpec;
 use crate::execution_environment::ExecutionEnvironment;
 use crate::shard_state::ShardState;
-use crate::slot_epoch_root::{Root, Slot};
+use crate::slot_epoch_root::{Slot};
 use serde::{Deserialize, Serialize};
-use serde_json;
-use ssz::{Decode, Encode};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
-use ssz_types::{BitVector, FixedVector, VariableList};
+use ssz_types::{VariableList};
+// Traits must be in scope in order to use items on the trait
+use typenum::marker_traits::Unsigned;
 
 /// The state of the `BeaconChain` at some slot.
 /// Full spec is here: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate
@@ -56,6 +56,8 @@ where
     //    finalized_checkpoint: Checkpoint,
 
     // Phase 1
+    // TODO: In the spec this is a List (ie. VariableList), but if # of shards is set in stone,
+    // seems like this is better represented as a Vector (ie. FixedVector)
     pub shard_states: VariableList<ShardState<T>, T::MaxShards>,
     //    online_countdown: VariableList<OnlineEpochs, T::ValidatorRegistryLimit>,
     //    current_light_committee: CompactCommittee,
@@ -71,10 +73,13 @@ where
 impl<T: EthSpec> BeaconState<T> {
     pub fn new() -> Self {
         // shard_states should initialize shard for each ShardCount
+        let initial_shard_state: ShardState<T> = ShardState::new();
+        let shard_states_vec = vec![initial_shard_state; T::MaxShards::to_usize()];
+        let shard_states = VariableList::new(shard_states_vec).unwrap();
         Self {
-            slot: Slot::new(0),
-            shard_states: VariableList::empty(),
             execution_environments: VariableList::empty(),
+            shard_states,
+            slot: Slot::new(0),
         }
     }
 }
@@ -82,6 +87,8 @@ impl<T: EthSpec> BeaconState<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Can't use these traits unless they're imported
+    use ssz::{Decode, Encode};
     use crate::eth_spec::MainnetEthSpec;
 
     #[test]

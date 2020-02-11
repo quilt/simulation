@@ -51,6 +51,22 @@ impl Slot {
 }
 
 impl Epoch {
+    pub fn new(epoch: u64) -> Self {
+        Self(epoch)
+    }
+}
+
+impl EEIndex {
+    pub fn new(ee_index: u64) -> Self { Self(ee_index) }
+}
+
+impl Shard {
+    pub fn new(shard: u64) -> Self {
+        Self(shard)
+    }
+}
+
+impl ShardSlot {
     pub fn new(slot: u64) -> Self {
         Self(slot)
     }
