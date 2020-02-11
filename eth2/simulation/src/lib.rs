@@ -12,7 +12,7 @@ pub type Result<V, E = Error> = std::result::Result<V, E>;
 pub enum WhatBound {
     ExecutionEnvironment,
     ExecutionEnvironmentState,
-    ShardBlock(u32),
+    ShardBlock(usize),
     Shard,
 }
 

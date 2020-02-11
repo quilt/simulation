@@ -149,7 +149,17 @@ impl<T: EthSpec> Simulation<T> {
 
     /// Get a shard block that was previously added
     pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock> {
-        unimplemented!();
+        let shard_index: usize = a.shard.into();
+        let shard_block_index: usize = a.shard_slot.into();
+        let shard = self.store.shard_blocks_by_shard.get(&a.shard).ok_or(Error::OutOfBounds {
+            what: WhatBound::Shard,
+            index: shard_index,
+        })?;
+        let shard_block = shard.get(shard_block_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::ShardBlock(shard_index),
+            index: shard_block_index,
+        })?;
+        Ok(shard_block.clone())
     }
 
     /// Get the specified ShardState, will contain EE states
