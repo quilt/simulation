@@ -1077,6 +1077,7 @@ name = "simulation"
 version = "0.1.0"
 dependencies = [
  "ewasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz_types 0.1.0",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1336,6 +1337,7 @@ dependencies = [
  "eth2_ssz_derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fixed-hash 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "int_to_bytes 0.1.0",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
