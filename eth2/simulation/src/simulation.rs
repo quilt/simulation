@@ -65,7 +65,7 @@ impl<T: EthSpec> Simulation<T> {
     pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<ShardSlot> {
         // Get the specified ShardState (if it exists)
         let shard_index: usize = a.shard.into();
-        let mut shard_state = self.store.current_beacon_state.shard_states.get_mut(shard_index).ok_or(Error::OutOfBounds {
+        let shard_state = self.store.current_beacon_state.shard_states.get_mut(shard_index).ok_or(Error::OutOfBounds {
             what: WhatBound::Shard,
             index: shard_index,
         })?;
