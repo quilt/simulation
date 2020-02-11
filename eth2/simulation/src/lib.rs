@@ -11,13 +11,17 @@ pub type Result<V, E = Error> = std::result::Result<V, E>;
 #[derive(Debug)]
 pub enum WhatBound {
     ExecutionEnvironment,
+    ExecutionEnvironmentState,
     ShardBlock(u32),
+    Shard,
 }
 
 impl fmt::Display for WhatBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             WhatBound::ExecutionEnvironment => write!(f, "execution environment"),
+            WhatBound::ExecutionEnvironmentState => write!(f, "execution environment state"),
+            WhatBound::Shard => write!(f, "shard"),
             WhatBound::ShardBlock(shard) => write!(f, "block on shard {}", shard),
         }
     }

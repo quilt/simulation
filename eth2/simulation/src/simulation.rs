@@ -1,5 +1,6 @@
 use crate::store::Store;
-use crate::{Result, Error};
+use crate::{Result, Error, WhatBound};
+use ewasm::{Execute, RootRuntime};
 use ssz_types::{VariableList};
 use types::eth_spec::EthSpec;
 use types::execution_environment::ExecutionEnvironment;
@@ -58,33 +59,44 @@ impl<T: EthSpec> Simulation<T> {
     /// Add a new shard block containing a list of transactions that need to be executed
     /// Execute all transactions on the appropriate shards / EEs, return ShardBlock index
     pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<ShardSlot> {
-        // Create shard block
+        // Get the specified ShardState (if it exists)
+        let shard_index: usize = Shard::into(a.shard);
+        let shard_state = self.store.current_beacon_state.shard_states.get(shard_index).ok_or(Error::OutOfBounds {
+            what: WhatBound::Shard,
+            index: shard_index,
+        })?;
+
+        // Create the shard block from args
         let transactions = VariableList::new(a.shard_transactions).map_err(|_| {
             Error::MaxLengthExceeded {
                 what: format!("number of shard transactions per block"),
             }
-        });
+        })?;
         let shard_block = ShardBlock {
             transactions,
         };
 
         // Execute transactions and update shard state for all transactions
-        // TODO: Handle errors
-//        for transaction in a.shard_transactions {
-//            let execution_environment = self
-//                .store.current_beacon_state
-//                .execution_environments.get(transaction.ee_index)
-//                .get(transaction.ee_index as usize)
-//                .context(OutOfBounds {
-//                    what: WhatBound::ExecutionEnvironment,
-//                    index: transaction.ee_index as usize,
-//                })?;
-//            let code = &execution_environment.wasm_code;
-//
-//            let pre_state = shard_chain
-//                .execution_environment_state
-//                .get(&EeIndex(transaction.ee_index))
-//                .unwrap_or(&execution_environment.initial_shard_state);
+        for transaction in shard_block.transactions.iter() {
+            // Get the specified EE (if it exists)
+            let ee_index: usize = EEIndex::into(transaction.ee_index);
+            let execution_environment = self.store.current_beacon_state.execution_environments.get(ee_index).ok_or(Error::OutOfBounds {
+                what: WhatBound::ExecutionEnvironment,
+                index: ee_index,
+            })?;
+
+            // Get the current EE state
+            let pre_state = shard_state.execution_environment_states.get(ee_index).ok_or(Error::OutOfBounds {
+                what: WhatBound::ExecutionEnvironmentState,
+                index: ee_index,
+            })?;
+            let wasm_code = &execution_environment.wasm_code;
+
+            // Create a new runtime with the EE code, transaction data, and pre state root
+
+
+
+//            let mut runtime = Roo
 //            let data = base64::decode(&transaction.base64_encoded_data).context(Decode)?;
 //            let mut runtime = RootRuntime::new(&code, &data, pre_state.data);
 //            let post_root = runtime.execute();
@@ -99,7 +111,9 @@ impl<T: EthSpec> Simulation<T> {
 //                data,
 //                ee_index: EeIndex(transaction.ee_index),
 //            });
-//        }
+        }
+
+        Ok(ShardSlot::new(0))
 
         // Update shard state for all transactions
         // Store transactions

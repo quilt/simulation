@@ -1076,6 +1076,7 @@ dependencies = [
 name = "simulation"
 version = "0.1.0"
 dependencies = [
+ "ewasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz_types 0.1.0",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
