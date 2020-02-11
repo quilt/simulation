@@ -209,6 +209,8 @@ mod args {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex::FromHex;
+    use std::convert::TryFrom;
     use types::eth_spec::MainnetEthSpec;
     use typenum::Unsigned;
 
@@ -284,13 +286,63 @@ mod tests {
         }
     }
 
-    #[test]
-    fn can_create_and_get_shard_block() {
+    fn test_block_with_single_transaction(wasm_code: &[u8], initial_state: Root, data: Vec<u8>, expected_post_state: Root) {
+        let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
+        // Create EE with the specified code and initial state
+        let create_ee_args = args::CreateExecutionEnvironment {
+            initial_state,
+            wasm_code: wasm_code.to_vec(),
+        };
+        let ee_index = simulation.create_execution_environment(create_ee_args).unwrap();
+        assert_eq!(ee_index, EEIndex::new(0));
+
+        // Set up a shard transaction with the specified data
+        let shard_transaction = ShardTransaction {
+            data: VariableList::new(data).unwrap(),
+            ee_index,
+        };
+
+        // Create a shard block with the one transaction in it
+        let shard = Shard::new(0);
+        let create_shard_block_args = args::CreateShardBlock {
+            shard,
+            shard_transactions: vec![shard_transaction],
+        };
+        // This creates the block and runs all the transactions inside it
+        let shard_slot = simulation.create_shard_block(create_shard_block_args).unwrap();
+
+        // Get back the EE state to make sure it matches the expected_post_state
+        let get_ee_state_args = args::GetExecutionEnvironmentState {
+            ee_index,
+            shard,
+        };
+        let ee_post_state = simulation.get_execution_environment_state(get_ee_state_args).unwrap();
+        assert_eq!(ee_post_state, expected_post_state, "actual post state root should match expected post state root");
     }
 
     #[test]
-    fn create_shard_blocks_executes_transactions_and_updates_state() {
-
+    fn run_scout_helloworld_test() {
+        let initial_state = Root::from([0; 32]);
+        let expected_post_state = Root::from([0; 32]);
+        let data: Vec<u8> = Vec::new();
+        test_block_with_single_transaction(
+            include_bytes!("../tests/phase2_helloworld.wasm"),
+            initial_state,
+            data,
+            expected_post_state,
+        )
+    }
+    #[test]
+    fn run_scout_bazaar_test() {
+        let initial_state = Root::try_from("22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4").unwrap();
+        let expected_post_state = Root::try_from("29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc").unwrap();
+        let data: Vec<u8> = Vec::from_hex("5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000").unwrap();
+        test_block_with_single_transaction(
+            include_bytes!("../tests/phase2_bazaar.wasm"),
+            initial_state,
+            data,
+            expected_post_state,
+        )
     }
 }
