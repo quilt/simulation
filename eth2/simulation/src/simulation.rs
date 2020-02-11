@@ -209,9 +209,88 @@ mod args {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::eth_spec::MainnetEthSpec;
+    use typenum::Unsigned;
 
     #[test]
     fn simulation_new() {
+        let simulation: Simulation<MainnetEthSpec> = Simulation::new();
+        let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
+        // Should have MaxShards shard states
+        assert_eq!(simulation.store.current_beacon_state.shard_states.len(), max_shards);
+        // Should have no ees initially
+        assert_eq!(simulation.store.current_beacon_state.execution_environments.len(), 0);
+        // Should have no ee states initially
+        for i in 0..max_shards {
+            let shard_state = simulation.store.current_beacon_state.shard_states.get(i).unwrap();
+            assert_eq!(shard_state.execution_environment_states.len(), 0);
+        }
+        // Should have MaxShards shards, but no shard blocks
+        assert_eq!(simulation.store.shard_blocks_by_shard.len(), max_shards);
+        for i in 0..max_shards {
+            let shard_blocks_for_shard_i = simulation.store.shard_blocks_by_shard.get(&Shard::new(i as u64)).unwrap();
+            assert_eq!(shard_blocks_for_shard_i.len(), 0);
+        }
+    }
+
+    #[test]
+    fn can_create_and_get_ee() {
+        let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
+
+        // Set up args::CreateExecutionEnvironment
+        let mut initial_state_bytes: [u8; 32] = [0; 32];
+        initial_state_bytes[5] = 1;
+        let initial_state = Root::from(initial_state_bytes);
+        let example_wasm_code: &[u8] = include_bytes!("../tests/do_nothing.wasm");
+        let example_wasm_code2: &[u8] = include_bytes!("../tests/phase2_bazaar.wasm");
+        let create_ee_args = args::CreateExecutionEnvironment {
+            initial_state,
+            wasm_code: example_wasm_code.to_vec(),
+        };
+        let create_ee_args2 = args::CreateExecutionEnvironment {
+            initial_state: initial_state.clone(),
+            wasm_code: example_wasm_code2.to_vec(),
+        };
+
+        // Calling create_execution_environment repeatedly should return an increasing EE index
+        let ee_index: usize = simulation.create_execution_environment(create_ee_args).unwrap().into();
+        assert_eq!(ee_index, 0);
+        let ee_index2: usize = simulation.create_execution_environment(create_ee_args2).unwrap().into();
+        assert_eq!(ee_index2, 1);
+
+        // Set up args::GetExecutionEnvironment
+        let get_ee_args = args::GetExecutionEnvironment {
+            ee_index: EEIndex::new(ee_index as u64),
+        };
+        let get_ee_args2 = args::GetExecutionEnvironment {
+            ee_index: EEIndex::new(ee_index2 as u64),
+        };
+
+        // Make sure the retrieved EEs have the same wasm code originally passed in
+        let ee = simulation.get_execution_environment(get_ee_args).unwrap();
+        let ee2 = simulation.get_execution_environment(get_ee_args2).unwrap();
+        assert_eq!(ee.wasm_code.to_vec(), example_wasm_code.to_vec());
+        assert_eq!(ee2.wasm_code.to_vec(), example_wasm_code2.to_vec());
+
+        // Make sure the EEs have the correct initial_state specified for every shard
+        let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
+        for i in 0..max_shards {
+            let get_ee_state_args = args::GetExecutionEnvironmentState {
+                ee_index: EEIndex::new(ee_index as u64),
+                shard: Shard::new(i as u64),
+            };
+            let ee_state = simulation.get_execution_environment_state(get_ee_state_args).unwrap();
+            assert_eq!(ee_state, initial_state);
+        }
+    }
+
+    #[test]
+    fn can_create_and_get_shard_block() {
+
+    }
+
+    #[test]
+    fn create_shard_blocks_executes_transactions_and_updates_state() {
 
     }
 }
