@@ -286,7 +286,7 @@ mod tests {
         }
     }
 
-    fn test_block_with_single_transaction(wasm_code: &[u8], initial_state: Root, data: Vec<u8>, expected_post_state: Root) {
+    fn test_block_with_single_transaction(wasm_code: &[u8], initial_state: Root, data: Vec<u8>, expected_post_state: Root, shard: Shard) -> (Simulation<MainnetEthSpec>, ShardTransaction, ShardSlot, EEIndex) {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Create EE with the specified code and initial state
@@ -302,9 +302,9 @@ mod tests {
             data: VariableList::new(data).unwrap(),
             ee_index,
         };
+        let shard_transaction_copy = shard_transaction.clone();
 
         // Create a shard block with the one transaction in it
-        let shard = Shard::new(0);
         let create_shard_block_args = args::CreateShardBlock {
             shard,
             shard_transactions: vec![shard_transaction],
@@ -319,30 +319,55 @@ mod tests {
         };
         let ee_post_state = simulation.get_execution_environment_state(get_ee_state_args).unwrap();
         assert_eq!(ee_post_state, expected_post_state, "actual post state root should match expected post state root");
+
+        (simulation, shard_transaction_copy, shard_slot, ee_index)
     }
 
     #[test]
-    fn run_scout_helloworld_test() {
+    fn run_scout_helloworld_and_get_shard_block_and_state() {
         let initial_state = Root::from([0; 32]);
         let expected_post_state = Root::from([0; 32]);
         let data: Vec<u8> = Vec::new();
-        test_block_with_single_transaction(
+        let shard = Shard::new(0);
+        let (simulation, shard_transaction, shard_slot, ee_index) = test_block_with_single_transaction(
             include_bytes!("../tests/phase2_helloworld.wasm"),
             initial_state,
             data,
             expected_post_state,
-        )
+            shard,
+        );
+
+        // Test that GetShardBlock is working as expected
+        let get_shard_block_args = args::GetShardBlock {
+            shard,
+            shard_slot,
+        };
+        let shard_block = simulation.get_shard_block(get_shard_block_args).unwrap();
+
+        // Make sure the transaction on the retrieved block matches the transaction
+        // on the created block
+        assert_eq!(shard_block.transactions.get(0).unwrap().clone(), shard_transaction);
+
+        // Test that GetShardState is working as expected
+        let get_shard_state_args = args::GetShardState {
+            shard,
+        };
+        let shard_state = simulation.get_shard_state(get_shard_state_args).unwrap();
+        let ee_index: usize = ee_index.into();
+        let ee_state: &Root = shard_state.execution_environment_states.get(ee_index).unwrap();
+        assert_eq!(ee_state, &expected_post_state);
     }
     #[test]
     fn run_scout_bazaar_test() {
         let initial_state = Root::try_from("22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4").unwrap();
         let expected_post_state = Root::try_from("29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc").unwrap();
         let data: Vec<u8> = Vec::from_hex("5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000").unwrap();
-        test_block_with_single_transaction(
+        let (simulation, shard_transaction, shard_slot, ee_index) = test_block_with_single_transaction(
             include_bytes!("../tests/phase2_bazaar.wasm"),
             initial_state,
             data,
             expected_post_state,
-        )
+            Shard::new(0),
+        );
     }
 }
