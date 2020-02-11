@@ -2,19 +2,19 @@
 // with some modifications and deletions. Specifically, removed code that wasn't necessary for this
 // repository, updated to use explicit imports, and added additional values to the spec definition.
 use crate::beacon_state::BeaconState;
-use crate::slot_epoch_root::Epoch;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use typenum::{
-    Unsigned, U0, U1, U1024, U1099511627776, U128, U16, U16777216, U2048, U32, U4, U4096, U64,
-    U65536, U8, U8192,
+    Unsigned,
+    U1024,
+    U65536,
 };
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
      * Unspecced values
      */
-    type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
 
     //    /*
     //     * Constants

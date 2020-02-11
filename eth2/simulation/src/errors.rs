@@ -24,4 +24,6 @@ impl fmt::Display for WhatBound {
 pub enum Error {
     #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds { what: WhatBound, index: usize },
+    #[snafu(display("uncategorized error: {}", message))]
+    Uncategorized { message: String, backtrace: Backtrace},
 }

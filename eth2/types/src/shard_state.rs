@@ -1,6 +1,5 @@
-use crate::slot_epoch_root::{Root, Slot};
+use crate::slot_epoch_root::{Root};
 use serde::{Deserialize, Serialize};
-use ssz::{Decode, Encode};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
 use ssz_types::{VariableList};
 use crate::eth_spec::EthSpec;
@@ -16,5 +15,13 @@ where
     //    latest_block_root: Root,
 
     // Unspecced fields
-    execution_environment_states: VariableList<Root, T::MaxExecutionEnvironments>,
+    pub execution_environment_states: VariableList<Root, T::MaxExecutionEnvironments>,
+}
+
+impl<T: EthSpec> ShardState<T> {
+    pub fn new() -> Self {
+        Self {
+            execution_environment_states: VariableList::empty(),
+        }
+    }
 }
