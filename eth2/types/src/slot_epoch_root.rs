@@ -72,6 +72,10 @@ impl ShardSlot {
     }
 }
 
+impl Root {
+
+}
+
 impl Decode for Root {
     fn is_ssz_fixed_len() -> bool {
         true
