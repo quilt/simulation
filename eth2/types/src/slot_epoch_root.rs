@@ -33,13 +33,13 @@ pub struct ShardSlot(u64);
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct EEIndex(u64);
+pub struct EeIndex(u64);
 
 impl_common!(Slot);
 impl_common!(Epoch);
 impl_common!(Shard);
 impl_common!(ShardSlot);
-impl_common!(EEIndex);
+impl_common!(EeIndex);
 
 construct_fixed_hash! {
     #[derive(Serialize, Deserialize)]
@@ -58,7 +58,7 @@ impl Epoch {
     }
 }
 
-impl EEIndex {
+impl EeIndex {
     pub fn new(ee_index: u64) -> Self {
         Self(ee_index)
     }
