@@ -7,7 +7,7 @@ use types::execution_environment::ExecutionEnvironment;
 use types::shard_block::ShardBlock;
 use types::shard_state::ShardState;
 use types::shard_transaction::ShardTransaction;
-use types::slot_epoch_root::{EEIndex, Root, Shard, ShardSlot};
+use types::slot_epoch_root::{EeIndex, Root, Shard, ShardSlot};
 
 pub struct Simulation<T>
 where
@@ -27,7 +27,7 @@ impl<T: EthSpec> Simulation<T> {
     pub fn create_execution_environment(
         &mut self,
         a: args::CreateExecutionEnvironment,
-    ) -> Result<EEIndex> {
+    ) -> Result<EeIndex> {
         // Create EE struct from args
         let vl_wasm_code =
             VariableList::new(a.wasm_code).map_err(|_| Error::MaxLengthExceeded {
@@ -65,7 +65,7 @@ impl<T: EthSpec> Simulation<T> {
         }
 
         let ee_index = self.store.current_beacon_state.execution_environments.len() - 1;
-        Ok(EEIndex::new(ee_index as u64))
+        Ok(EeIndex::new(ee_index as u64))
     }
 
     /// Add a new shard block containing a list of transactions that need to be executed
@@ -114,10 +114,10 @@ impl<T: EthSpec> Simulation<T> {
                 })?;
 
             // Create a new runtime with the EE code, transaction data, and pre state root
-            let wasm_code: Vec<u8> = execution_environment.wasm_code.clone().into();
-            let data: Vec<u8> = transaction.data.clone().into();
+            let wasm_code: &[u8] = &*execution_environment.wasm_code;
+            let data: &[u8] = &*transaction.data;
             let pre_state: [u8; 32] = pre_state.clone().into();
-            let mut runtime = RootRuntime::new(&wasm_code, &data, pre_state);
+            let mut runtime = RootRuntime::new(wasm_code, data, pre_state);
             let post_root = runtime.execute();
             drop(runtime);
 
@@ -237,10 +237,10 @@ mod args {
         pub shard_transactions: Vec<ShardTransaction>,
     }
     pub struct GetExecutionEnvironment {
-        pub ee_index: EEIndex,
+        pub ee_index: EeIndex,
     }
     pub struct GetExecutionEnvironmentState {
-        pub ee_index: EEIndex,
+        pub ee_index: EeIndex,
         pub shard: Shard,
     }
     pub struct GetShardBlock {
@@ -333,10 +333,10 @@ mod tests {
 
         // Set up args::GetExecutionEnvironment
         let get_ee_args = args::GetExecutionEnvironment {
-            ee_index: EEIndex::new(ee_index as u64),
+            ee_index: EeIndex::new(ee_index as u64),
         };
         let get_ee_args2 = args::GetExecutionEnvironment {
-            ee_index: EEIndex::new(ee_index2 as u64),
+            ee_index: EeIndex::new(ee_index2 as u64),
         };
 
         // Make sure the retrieved EEs have the same wasm code originally passed in
@@ -349,7 +349,7 @@ mod tests {
         let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
         for i in 0..max_shards {
             let get_ee_state_args = args::GetExecutionEnvironmentState {
-                ee_index: EEIndex::new(ee_index as u64),
+                ee_index: EeIndex::new(ee_index as u64),
                 shard: Shard::new(i as u64),
             };
             let ee_state = simulation
@@ -369,7 +369,7 @@ mod tests {
         Simulation<MainnetEthSpec>,
         ShardTransaction,
         ShardSlot,
-        EEIndex,
+        EeIndex,
     ) {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
@@ -381,7 +381,7 @@ mod tests {
         let ee_index = simulation
             .create_execution_environment(create_ee_args)
             .unwrap();
-        assert_eq!(ee_index, EEIndex::new(0));
+        assert_eq!(ee_index, EeIndex::new(0));
 
         // Set up a shard transaction with the specified data
         let shard_transaction = ShardTransaction {
