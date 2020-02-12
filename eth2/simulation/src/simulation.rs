@@ -29,13 +29,12 @@ impl<T: EthSpec> Simulation<T> {
         a: args::CreateExecutionEnvironment,
     ) -> Result<EeIndex> {
         // Create EE struct from args
-        let vl_wasm_code =
-            VariableList::new(a.wasm_code).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("wasm_code"),
-            })?;
+        let wasm_code = VariableList::new(a.wasm_code).map_err(|_| Error::MaxLengthExceeded {
+            what: format!("wasm_code"),
+        })?;
         let ee = ExecutionEnvironment {
             initial_state: a.initial_state,
-            wasm_code: vl_wasm_code,
+            wasm_code,
         };
 
         // Add EE code to beacon chain
