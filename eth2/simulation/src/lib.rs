@@ -1,4 +1,4 @@
-mod simulation;
+pub mod simulation;
 mod store;
 
 use snafu::Snafu;
@@ -34,3 +34,6 @@ pub enum Error {
     #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds { what: WhatBound, index: usize },
 }
+
+pub use simulation::Simulation;
+pub use simulation::args;

@@ -667,9 +667,11 @@ dependencies = [
  "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simulation 0.1.0",
  "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
 ]
 
 [[package]]

@@ -6,14 +6,16 @@
 #![warn(missing_debug_implementations)]
 
 mod api;
-mod ethereum;
+//mod ethereum;
+mod dispatch;
 
 use futures_util::future::{self, FutureExt};
 use futures_util::pin_mut;
-
+use simulation::{Simulation};
 use snafu::{Backtrace, ResultExt, Snafu};
-
+use std::marker::PhantomData;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use types::eth_spec::EthSpec;
 
 mod error {
     use super::*;
@@ -28,10 +30,9 @@ mod error {
             source: api::Error,
         },
 
-        /// Errors returned by the simulation.
-        Ethereum {
-            /// The underlying error as returned by the simulation.
-            source: ethereum::Error,
+        /// Errors returned by the Dispatch logic
+        Dispatch {
+            source: dispatch::Error,
         },
 
         /// Errors returned by tokio.
@@ -52,14 +53,23 @@ pub type Result<V, E = Error> = std::result::Result<V, E>;
 
 /// Configuration options for starting a `Notion` server instance.
 #[derive(Debug, Clone)]
-pub struct NotionBuilder {
+pub struct NotionBuilder<T: EthSpec> {
     bind: SocketAddr,
+    // #PhantomDataExplanation
+    // Required to be able to write NotionBuilder<T: EthSpec> without actually
+    // using the T value anywhere in the NotionBuilder implementation, which is
+    // in turn required because we want to be able to specify Simulation<T> in the
+    // initialization of Notion and NotionBuilder
+    phantom: PhantomData<T>,
 }
 
-impl NotionBuilder {
+impl<T: EthSpec> NotionBuilder<T> {
     /// Create a new `Notion` instance from the configuration in this builder.
-    pub fn build(self) -> Notion {
-        Notion { bind: self.bind }
+    pub fn build(self) -> Notion<T> {
+        Notion {
+            bind: self.bind,
+            phantom: PhantomData,
+        }
     }
 
     /// Set the local address the server will listen to.
@@ -71,23 +81,26 @@ impl NotionBuilder {
     }
 }
 
-impl Default for NotionBuilder {
+impl<T: EthSpec> Default for NotionBuilder<T> {
     fn default() -> Self {
         NotionBuilder {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+            phantom: PhantomData,
         }
     }
 }
 
-/// A server that simulates Ethereum 2.0's phase two.
+/// An HTTP/JSON server wrapper around eth2::simulation::Simulation
 #[derive(Debug)]
-pub struct Notion {
+pub struct Notion<T: EthSpec> {
     bind: SocketAddr,
+    // See #PhantomDataExplanation
+    phantom: PhantomData<T>,
 }
 
-impl Notion {
+impl<T: EthSpec> Notion<T> {
     /// Create a builder for a `Notion` server.
-    pub fn builder() -> NotionBuilder {
+    pub fn builder() -> NotionBuilder<T> {
         NotionBuilder::default()
     }
 
@@ -98,21 +111,23 @@ impl Notion {
 
     #[tokio::main]
     async fn async_run(self) -> Result<()> {
-        let simulation = ethereum::Simulation::new();
-        let (dispatch, handle) = ethereum::Dispatch::new(simulation);
-
-        let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Ethereum)));
-        let api_run =
-            tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
-
-        pin_mut!(eth_run);
-        pin_mut!(api_run);
-
-        future::try_select(eth_run, api_run)
-            .await
-            .unwrap()
-            .factor_first()
-            .0
+//        let simulation = ethereum::Simulation::new();
+        let simulation: Simulation<T> = Simulation::new();
+        Ok(())
+//        let (dispatch, handle) = ethereum::Dispatch::new(simulation);
+//
+//        let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Ethereum)));
+//        let api_run =
+//            tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
+//
+//        pin_mut!(eth_run);
+//        pin_mut!(api_run);
+//
+//        future::try_select(eth_run, api_run)
+//            .await
+//            .unwrap()
+//            .factor_first()
+//            .0
     }
 }
 

@@ -9,6 +9,7 @@ use types::shard_state::ShardState;
 use types::shard_transaction::ShardTransaction;
 use types::slot_epoch_root::{EeIndex, Root, Shard, ShardSlot};
 
+#[derive(Debug)]
 pub struct Simulation<T>
 where
     T: EthSpec,
@@ -224,28 +225,34 @@ impl<T: EthSpec> Simulation<T> {
 // to this mod.  For now, however, we'll just directly return the internal state of the Simulation.
 // (eg. a `Simulation.get_execution_environment_state` will return an internal `Root` object,
 // instead of the more generic `[u8; 32]`)
-mod args {
+pub mod args {
     use super::*;
 
+    #[derive(Debug)]
     pub struct CreateExecutionEnvironment {
         pub initial_state: Root,
         pub wasm_code: Vec<u8>,
     }
+    #[derive(Debug)]
     pub struct CreateShardBlock {
         pub shard: Shard,
         pub shard_transactions: Vec<ShardTransaction>,
     }
+    #[derive(Debug)]
     pub struct GetExecutionEnvironment {
         pub ee_index: EeIndex,
     }
+    #[derive(Debug)]
     pub struct GetExecutionEnvironmentState {
         pub ee_index: EeIndex,
         pub shard: Shard,
     }
+    #[derive(Debug)]
     pub struct GetShardBlock {
         pub shard: Shard,
         pub shard_slot: ShardSlot,
     }
+    #[derive(Debug)]
     pub struct GetShardState {
         pub shard: Shard,
     }

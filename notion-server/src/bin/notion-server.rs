@@ -3,6 +3,7 @@ use notion_server::{Notion, NotionBuilder, Result};
 use std::net::SocketAddr;
 
 use structopt::StructOpt;
+use types::eth_spec::MainnetEthSpec;
 
 #[derive(StructOpt, Debug)]
 struct Opt {
@@ -11,15 +12,15 @@ struct Opt {
     bind: SocketAddr,
 }
 
-impl Into<NotionBuilder> for Opt {
-    fn into(self) -> NotionBuilder {
+impl Into<NotionBuilder<MainnetEthSpec>> for Opt {
+    fn into(self) -> NotionBuilder<MainnetEthSpec> {
         Notion::builder().bind(self.bind)
     }
 }
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
-    let builder: NotionBuilder = opt.into();
+    let builder: NotionBuilder<MainnetEthSpec> = opt.into();
     let notion = builder.build();
 
     notion.run()
