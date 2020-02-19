@@ -10,6 +10,7 @@ use types::slot_epoch_root::Shard;
 /// simulation state in whatever manner is most convenient.
 /// However, some types that ARE listed in a spec (eg. BeaconState) will still be spec-compliant
 /// even if they happen to be stored in Store.
+#[derive(Debug)]
 pub struct Store<T>
 where
     T: EthSpec,
