@@ -140,7 +140,7 @@ impl<T: EthSpec> Simulation<T> {
     pub fn get_execution_environment(
         &self,
         a: args::GetExecutionEnvironment,
-    ) -> Result<ExecutionEnvironment<T>> {
+    ) -> Result<args::ExecutionEnvironment> {
         let ee_index= a.ee_index as usize;
         let ee = self
             .store
@@ -151,16 +151,16 @@ impl<T: EthSpec> Simulation<T> {
                 what: WhatBound::ExecutionEnvironment,
                 index: ee_index,
             })?;
-        Ok(ee.clone())
+        Ok(ee.clone().into())
     }
 
     /// Get the current state of an execution environment on a shard
     pub fn get_execution_environment_state(
         &self,
         a: args::GetExecutionEnvironmentState,
-    ) -> Result<Root> {
-        let ee_index: usize = a.ee_index.into();
-        let shard_index: usize = a.shard.into();
+    ) -> Result<[u8; 32]> {
+        let ee_index = a.ee_index as usize;
+        let shard_index = a.shard as usize;
         let shard_state = self
             .store
             .current_beacon_state
@@ -177,7 +177,7 @@ impl<T: EthSpec> Simulation<T> {
                 what: WhatBound::ExecutionEnvironmentState,
                 index: ee_index,
             })?;
-        Ok(ee_state_root.clone())
+        Ok(ee_state_root.clone().into())
     }
 
     /// Get a shard block that was previously added
@@ -241,8 +241,8 @@ pub mod args {
     }
     #[derive(Debug)]
     pub struct GetExecutionEnvironmentState {
-        pub ee_index: EeIndex,
-        pub shard: Shard,
+        pub ee_index: u64,
+        pub shard: u64,
     }
     #[derive(Debug)]
     pub struct GetShardBlock {
@@ -376,35 +376,33 @@ mod tests {
         // Calling create_execution_environment repeatedly should return an increasing EE index
         let ee_index = simulation
             .create_execution_environment(create_ee_args)
-            .unwrap()
-            .into();
+            .unwrap();
         assert_eq!(ee_index, 0);
         let ee_index2 = simulation
             .create_execution_environment(create_ee_args2)
-            .unwrap()
-            .into();
+            .unwrap();
         assert_eq!(ee_index2, 1);
 
         // Set up args::GetExecutionEnvironment
         let get_ee_args = args::GetExecutionEnvironment {
-            ee_index: EeIndex::new(ee_index as u64),
+            ee_index: ee_index,
         };
         let get_ee_args2 = args::GetExecutionEnvironment {
-            ee_index: EeIndex::new(ee_index2 as u64),
+            ee_index: ee_index2,
         };
 
         // Make sure the retrieved EEs have the same wasm code originally passed in
         let ee = simulation.get_execution_environment(get_ee_args).unwrap();
         let ee2 = simulation.get_execution_environment(get_ee_args2).unwrap();
-        assert_eq!(ee.wasm_code.to_vec(), example_wasm_code.to_vec());
-        assert_eq!(ee2.wasm_code.to_vec(), example_wasm_code2.to_vec());
+        assert_eq!(ee.wasm_code, example_wasm_code.to_vec());
+        assert_eq!(ee2.wasm_code, example_wasm_code2.to_vec());
 
         // Make sure the EEs have the correct initial_state specified for every shard
         let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
         for i in 0..max_shards {
             let get_ee_state_args = args::GetExecutionEnvironmentState {
-                ee_index: EeIndex::new(ee_index as u64),
-                shard: Shard::new(i as u64),
+                ee_index,
+                shard: i,
             };
             let ee_state = simulation
                 .get_execution_environment_state(get_ee_state_args)
