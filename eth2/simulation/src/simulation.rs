@@ -29,7 +29,7 @@ impl<T: EthSpec> Simulation<T> {
     pub fn create_execution_environment(
         &mut self,
         a: args::CreateExecutionEnvironment,
-    ) -> Result<EeIndex> {
+    ) -> Result<u64> {
         // Create internal EE struct from args
         let ee = ExecutionEnvironment::try_from(a.ee)?;
         let cloned_initial_state = ee.initial_state.clone();
@@ -61,7 +61,7 @@ impl<T: EthSpec> Simulation<T> {
         }
 
         let ee_index = self.store.current_beacon_state.execution_environments.len() - 1;
-        Ok(EeIndex::new(ee_index as u64))
+        Ok(ee_index as u64)
     }
 
     /// Add a new shard block containing a list of transactions that need to be executed
@@ -141,7 +141,7 @@ impl<T: EthSpec> Simulation<T> {
         &self,
         a: args::GetExecutionEnvironment,
     ) -> Result<ExecutionEnvironment<T>> {
-        let ee_index: usize = a.ee_index.into();
+        let ee_index= a.ee_index as usize;
         let ee = self
             .store
             .current_beacon_state
@@ -237,7 +237,7 @@ pub mod args {
     }
     #[derive(Debug)]
     pub struct GetExecutionEnvironment {
-        pub ee_index: EeIndex,
+        pub ee_index: u64,
     }
     #[derive(Debug)]
     pub struct GetExecutionEnvironmentState {
@@ -352,27 +352,34 @@ mod tests {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Set up args::CreateExecutionEnvironment
-        let mut initial_state_bytes: [u8; 32] = [0; 32];
-        initial_state_bytes[5] = 1;
-        let initial_state = Root::from(initial_state_bytes);
+        let mut initial_state: [u8; 32] = [0; 32];
+        initial_state[5] = 1;
         let example_wasm_code: &[u8] = include_bytes!("../tests/do_nothing.wasm");
         let example_wasm_code2: &[u8] = include_bytes!("../tests/phase2_bazaar.wasm");
-        let create_ee_args = args::CreateExecutionEnvironment {
+
+        let interface_ee = args::ExecutionEnvironment {
             initial_state,
             wasm_code: example_wasm_code.to_vec(),
         };
-        let create_ee_args2 = args::CreateExecutionEnvironment {
+        let create_ee_args = args::CreateExecutionEnvironment {
+            ee: interface_ee,
+        };
+
+        let interface_ee2 = args::ExecutionEnvironment {
             initial_state: initial_state.clone(),
             wasm_code: example_wasm_code2.to_vec(),
         };
+        let create_ee_args2 = args::CreateExecutionEnvironment {
+            ee: interface_ee2,
+        };
 
         // Calling create_execution_environment repeatedly should return an increasing EE index
-        let ee_index: usize = simulation
+        let ee_index = simulation
             .create_execution_environment(create_ee_args)
             .unwrap()
             .into();
         assert_eq!(ee_index, 0);
-        let ee_index2: usize = simulation
+        let ee_index2 = simulation
             .create_execution_environment(create_ee_args2)
             .unwrap()
             .into();
