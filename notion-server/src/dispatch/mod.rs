@@ -28,7 +28,7 @@ where
     CreateShardBlock(args::CreateShardBlock, Sender<Result<eth2_types::slot_epoch_root::ShardSlot>>),
     GetExecutionEnvironment(
         args::GetExecutionEnvironment,
-        Sender<Result<eth2_types::execution_environment::ExecutionEnvironment>>,
+        Sender<Result<eth2_types::execution_environment::ExecutionEnvironment<T>>>,
     ),
     GetExecutionEnvironmentState(args::GetExecutionEnvironmentState, Sender<Result<eth2_types::slot_epoch_root::Root>>),
     GetShardBlock(args::GetShardBlock, Sender<Result<eth2_types::shard_block::ShardBlock>>),
@@ -123,7 +123,7 @@ impl<T: EthSpec> Handle<T> {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_execution_environment(&mut self, arg: args::GetExecutionEnvironment) -> Result<eth2_types::execution_environment::ExecutionEnvironment> {
+    pub async fn get_execution_environment(&mut self, arg: args::GetExecutionEnvironment) -> Result<eth2_types::execution_environment::ExecutionEnvironment<T>> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetExecutionEnvironment(arg, sender)).await;
