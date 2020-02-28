@@ -20,7 +20,7 @@ where
     // A mapping from shard to the shard blocks contained in the shard
     // HashMap<Shard, Vec<ShardBlock>> is used instead of Vec<Vec<ShardBlock>> because the former
     // is easier to read and immediately understand what is being stored.
-    pub shard_blocks_by_shard: HashMap<Shard, Vec<ShardBlock>>,
+    pub shard_blocks_by_shard: HashMap<Shard, Vec<ShardBlock<T>>>,
 }
 
 impl<T: EthSpec> Store<T> {

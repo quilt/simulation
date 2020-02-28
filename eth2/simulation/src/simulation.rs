@@ -181,7 +181,7 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get a shard block that was previously added
-    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock> {
+    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock<T>> {
         let shard_index: usize = a.shard.into();
         let shard_block_index: usize = a.shard_slot.into();
         let shard = self
@@ -224,7 +224,7 @@ impl<T: EthSpec> Simulation<T> {
 pub mod args {
     // TODO: can remove this??
     use super::*;
-    use std::convert::TryFrom;
+    use std::convert::{TryFrom, TryInto};
 
     #[derive(Debug)]
     pub struct CreateExecutionEnvironment {
@@ -233,7 +233,7 @@ pub mod args {
     #[derive(Debug)]
     pub struct CreateShardBlock {
         pub shard: Shard,
-        pub shard_transactions: Vec<ShardTransaction>,
+        pub shard_transactions: Vec<super::ShardTransaction>,
     }
     #[derive(Debug)]
     pub struct GetExecutionEnvironment {
@@ -261,6 +261,15 @@ pub mod args {
         pub initial_state: [u8; 32],
         pub wasm_code: Vec<u8>,
     }
+    #[derive(Debug)]
+    pub struct ShardTransaction {
+        pub data: Vec<u8>,
+        pub ee_index: u64,
+    }
+    #[derive(Debug)]
+    pub struct ShardBlock {
+        pub transactions: Vec<ShardTransaction>,
+    }
 
     // Conversions to/from interface structs <--> internal structs
 
@@ -274,8 +283,6 @@ pub mod args {
             }
         }
     }
-
-    // interface struct to internal struct
     impl<T: EthSpec> TryFrom<ExecutionEnvironment> for super::ExecutionEnvironment<T> {
         type Error = crate::Error;
         fn try_from(value: ExecutionEnvironment) -> Result<Self, Self::Error> {
@@ -288,6 +295,59 @@ pub mod args {
             Ok(Self {
                 initial_state,
                 wasm_code,
+            })
+        }
+    }
+
+    impl From<super::ShardTransaction> for ShardTransaction {
+        fn from(value: super::ShardTransaction) -> Self {
+            let data: Vec<u8> = value.data.into();
+            let ee_index: u64 = value.ee_index.into();
+            Self {
+                data,
+                ee_index,
+            }
+        }
+    }
+    impl TryFrom<ShardTransaction> for super::ShardTransaction {
+        type Error = crate::Error;
+        fn try_from(value: ShardTransaction) -> Result<Self, Self::Error> {
+            let ee_index = value.ee_index.into();
+            // TODO(gregt): Switch this to wrap the underlying error
+            let data = VariableList::new(value.data).map_err(|_| Error::MaxLengthExceeded {
+                what: format!("data"),
+            })?;
+            Ok(Self {
+                data,
+                ee_index,
+            })
+        }
+    }
+
+    impl<T: EthSpec> From<super::ShardBlock<T>> for ShardBlock {
+        fn from(value: super::ShardBlock<T>) -> Self {
+            let transactions: Vec<ShardTransaction> = value.transactions.into_iter().map(|t| -> ShardTransaction {
+                t.clone().into()
+            }).collect();
+            Self {
+                transactions,
+            }
+        }
+    }
+    impl<T: EthSpec> TryFrom<ShardBlock> for super::ShardBlock<T> {
+        type Error = crate::Error;
+        fn try_from(value: ShardBlock) -> Result<Self, Self::Error> {
+            let mut transactions: Vec<super::ShardTransaction> = Vec::new();
+            for t in value.transactions.into_iter() {
+                let transaction = t.try_into()?;
+                transactions.push(transaction);
+            }
+            // TODO(gregt): Switch this to wrap the underlying error
+            let transactions = VariableList::new(transactions).map_err(|_| Error::MaxLengthExceeded {
+                what: format!("transactions per shard block"),
+            })?;
+            Ok(Self {
+                transactions,
             })
         }
     }
@@ -413,10 +473,10 @@ mod tests {
 
     fn test_block_with_single_transaction(
         wasm_code: &[u8],
-        initial_state: Root,
+        initial_state: [u8; 32],
         data: Vec<u8>,
-        expected_post_state: Root,
-        shard: Shard,
+        expected_post_state: [u8; 32],
+        shard: u64,
     ) -> (
         Simulation<MainnetEthSpec>,
         ShardTransaction,
@@ -426,14 +486,17 @@ mod tests {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Create EE with the specified code and initial state
-        let create_ee_args = args::CreateExecutionEnvironment {
+        let interface_ee = args::ExecutionEnvironment {
             initial_state,
             wasm_code: wasm_code.to_vec(),
+        };
+        let create_ee_args = args::CreateExecutionEnvironment {
+            ee: interface_ee,
         };
         let ee_index = simulation
             .create_execution_environment(create_ee_args)
             .unwrap();
-        assert_eq!(ee_index, EeIndex::new(0));
+        assert_eq!(ee_index, 0);
 
         // Set up a shard transaction with the specified data
         let shard_transaction = ShardTransaction {
