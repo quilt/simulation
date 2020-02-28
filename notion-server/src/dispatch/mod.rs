@@ -31,7 +31,7 @@ where
         Sender<Result<args::ExecutionEnvironment>>,
     ),
     GetExecutionEnvironmentState(args::GetExecutionEnvironmentState, Sender<Result<[u8; 32]>>),
-    GetShardBlock(args::GetShardBlock, Sender<Result<eth2_types::shard_block::ShardBlock>>),
+    GetShardBlock(args::GetShardBlock, Sender<Result<eth2_types::shard_block::ShardBlock<T>>>),
     GetShardState(args::GetShardState, Sender<Result<eth2_types::shard_state::ShardState<T>>>),
 }
 
@@ -139,7 +139,7 @@ impl<T: EthSpec> Handle<T> {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_shard_block(&mut self, arg: args::GetShardBlock) -> Result<eth2_types::shard_block::ShardBlock> {
+    pub async fn get_shard_block(&mut self, arg: args::GetShardBlock) -> Result<eth2_types::shard_block::ShardBlock<T>> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardBlock(arg, sender)).await;

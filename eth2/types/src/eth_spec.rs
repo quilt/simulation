@@ -12,6 +12,7 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
      */
     type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
     type MaxEEByteCodeSize: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
+    type MaxTransactionsPerBlock: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
 
     //    /*
     //     * Constants
@@ -73,6 +74,7 @@ pub struct MainnetEthSpec;
 impl EthSpec for MainnetEthSpec {
     type MaxExecutionEnvironments = U65536;
     type MaxEEByteCodeSize = U262144;
+    type MaxTransactionsPerBlock = U1024;
     //    type JustificationBitsLength = U4;
     //    type MaxValidatorsPerCommittee = U2048;
     //    type GenesisEpoch = U0;
