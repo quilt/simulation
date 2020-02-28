@@ -1,6 +1,7 @@
 use crate::store::Store;
 use crate::{Error, Result, WhatBound};
 use ewasm::{Execute, RootRuntime};
+use std::convert::TryFrom;
 use ssz_types::VariableList;
 use types::eth_spec::EthSpec;
 use types::execution_environment::ExecutionEnvironment;
@@ -29,14 +30,9 @@ impl<T: EthSpec> Simulation<T> {
         &mut self,
         a: args::CreateExecutionEnvironment,
     ) -> Result<EeIndex> {
-        // Create EE struct from args
-        let wasm_code = VariableList::new(a.wasm_code).map_err(|_| Error::MaxLengthExceeded {
-            what: format!("wasm_code"),
-        })?;
-        let ee = ExecutionEnvironment {
-            initial_state: a.initial_state,
-            wasm_code,
-        };
+        // Create internal EE struct from args
+        let ee = ExecutionEnvironment::try_from(a.ee)?;
+        let cloned_initial_state = ee.initial_state.clone();
 
         // Add EE code to beacon chain
         self.store
@@ -52,7 +48,7 @@ impl<T: EthSpec> Simulation<T> {
             // Set the initial state of the EE on each ShardState
             shard_state
                 .execution_environment_states
-                .push(a.initial_state.clone())
+                .push(cloned_initial_state)
                 .map_err(|_| Error::MaxLengthExceeded {
                     what: format!("number of execution environment states"),
                 })?;
@@ -144,7 +140,7 @@ impl<T: EthSpec> Simulation<T> {
     pub fn get_execution_environment(
         &self,
         a: args::GetExecutionEnvironment,
-    ) -> Result<ExecutionEnvironment> {
+    ) -> Result<ExecutionEnvironment<T>> {
         let ee_index: usize = a.ee_index.into();
         let ee = self
             .store
@@ -226,12 +222,13 @@ impl<T: EthSpec> Simulation<T> {
 // (eg. a `Simulation.get_execution_environment_state` will return an internal `Root` object,
 // instead of the more generic `[u8; 32]`)
 pub mod args {
+    // TODO: can remove this??
     use super::*;
     use std::convert::TryFrom;
 
     #[derive(Debug)]
     pub struct CreateExecutionEnvironment {
-        ee: ExecutionEnvironment,
+        pub ee: ExecutionEnvironment,
     }
     #[derive(Debug)]
     pub struct CreateShardBlock {
@@ -259,17 +256,39 @@ pub mod args {
 
     // Interface structs
 
+    #[derive(Debug)]
     pub struct ExecutionEnvironment {
         pub initial_state: [u8; 32],
         pub wasm_code: Vec<u8>,
     }
 
-    impl<T: EthSpec> TryFrom<super::ExecutionEnvironment<T>> for ExecutionEnvironment {
-        type Error = crate::Error;
+    // Conversions to/from interface structs <--> internal structs
 
-        fn try_from(value: super::ExecutionEnvironment<T>) -> Result<Self, Self::Error> {
-            let initial_state: super::Root = value.initial_state.from();
-            let wasm_code: VariableList<u8> = value.wasm_code.from();
+    impl<T: EthSpec> From<super::ExecutionEnvironment<T>> for ExecutionEnvironment {
+        fn from(value: super::ExecutionEnvironment<T>) -> Self {
+            let initial_state: [u8; 32] = value.initial_state.into();
+            let wasm_code: Vec<u8> = value.wasm_code.into();
+            Self {
+                initial_state,
+                wasm_code,
+            }
+        }
+    }
+
+    // interface struct to internal struct
+    impl<T: EthSpec> TryFrom<ExecutionEnvironment> for super::ExecutionEnvironment<T> {
+        type Error = crate::Error;
+        fn try_from(value: ExecutionEnvironment) -> Result<Self, Self::Error> {
+            let initial_state: super::Root = Root::from(value.initial_state);
+            // TODO(gregt): Switch this to wrap the underlying error
+            let wasm_code = VariableList::new(value.wasm_code).map_err(|_| Error::MaxLengthExceeded {
+                what: format!("wasm_code"),
+            })?;
+
+            Ok(Self {
+                initial_state,
+                wasm_code,
+            })
         }
     }
 
