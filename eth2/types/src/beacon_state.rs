@@ -65,7 +65,7 @@ where
     //    exposed_derived_secrets: FixedVector<VariableList<ValidatorIndex, T::MaxEarlyDerivedSecretRevealsPerEpoch>, T::EarlyDerivedSecretPenaltyMaxFutureEpochs>,
 
     // Unspecced fields
-    pub execution_environments: VariableList<ExecutionEnvironment, T::MaxExecutionEnvironments>,
+    pub execution_environments: VariableList<ExecutionEnvironment<T>, T::MaxExecutionEnvironments>,
 }
 
 impl<T: EthSpec> BeaconState<T> {

@@ -4,13 +4,14 @@
 use crate::beacon_state::BeaconState;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use typenum::{Unsigned, U1024, U65536};
+use typenum::{Unsigned, U1024, U65536, U262144};
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
      * Unspecced values
      */
     type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
+    type MaxEEByteCodeSize: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
 
     //    /*
     //     * Constants
@@ -71,6 +72,7 @@ pub struct MainnetEthSpec;
 
 impl EthSpec for MainnetEthSpec {
     type MaxExecutionEnvironments = U65536;
+    type MaxEEByteCodeSize = U262144;
     //    type JustificationBitsLength = U4;
     //    type MaxValidatorsPerCommittee = U2048;
     //    type GenesisEpoch = U0;

@@ -227,11 +227,11 @@ impl<T: EthSpec> Simulation<T> {
 // instead of the more generic `[u8; 32]`)
 pub mod args {
     use super::*;
+    use std::convert::TryFrom;
 
     #[derive(Debug)]
     pub struct CreateExecutionEnvironment {
-        pub initial_state: Root,
-        pub wasm_code: Vec<u8>,
+        ee: ExecutionEnvironment,
     }
     #[derive(Debug)]
     pub struct CreateShardBlock {
@@ -256,6 +256,28 @@ pub mod args {
     pub struct GetShardState {
         pub shard: Shard,
     }
+
+    // Interface structs
+
+    pub struct ExecutionEnvironment {
+        pub initial_state: [u8; 32],
+        pub wasm_code: Vec<u8>,
+    }
+
+    impl<T: EthSpec> TryFrom<super::ExecutionEnvironment<T>> for ExecutionEnvironment {
+        type Error = crate::Error;
+
+        fn try_from(value: super::ExecutionEnvironment<T>) -> Result<Self, Self::Error> {
+            let initial_state: super::Root = value.initial_state.from();
+            let wasm_code: VariableList<u8> = value.wasm_code.from();
+        }
+    }
+
+    // pub struct ShardTransaction {
+    //
+    // }
+
+
 }
 
 #[cfg(test)]
