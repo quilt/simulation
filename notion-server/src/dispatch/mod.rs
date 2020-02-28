@@ -24,7 +24,7 @@ enum Operation<T>
 where
     T: EthSpec,
 {
-    CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<eth2_types::slot_epoch_root::EeIndex>>),
+    CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u64>>),
     CreateShardBlock(args::CreateShardBlock, Sender<Result<eth2_types::slot_epoch_root::ShardSlot>>),
     GetExecutionEnvironment(
         args::GetExecutionEnvironment,
@@ -105,7 +105,7 @@ impl<T: EthSpec> Handle<T> {
     pub async fn create_execution_environment(
         &mut self,
         arg: args::CreateExecutionEnvironment,
-    ) -> Result<eth2_types::slot_epoch_root::EeIndex> {
+    ) -> Result<u64> {
         let (sender, mut receiver) = channel(1);
 
         self.sender
