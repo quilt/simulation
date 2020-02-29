@@ -20,19 +20,16 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-enum Operation<T>
-where
-    T: EthSpec,
-{
+enum Operation {
     CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u64>>),
-    CreateShardBlock(args::CreateShardBlock, Sender<Result<eth2_types::slot_epoch_root::ShardSlot>>),
+    CreateShardBlock(args::CreateShardBlock, Sender<Result<u64>>),
     GetExecutionEnvironment(
         args::GetExecutionEnvironment,
         Sender<Result<args::ExecutionEnvironment>>,
     ),
     GetExecutionEnvironmentState(args::GetExecutionEnvironmentState, Sender<Result<[u8; 32]>>),
-    GetShardBlock(args::GetShardBlock, Sender<Result<eth2_types::shard_block::ShardBlock<T>>>),
-    GetShardState(args::GetShardState, Sender<Result<eth2_types::shard_state::ShardState<T>>>),
+    GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
+    GetShardState(args::GetShardState, Sender<Result<args::ShardState>>),
 }
 
 #[derive(Debug)]
@@ -40,11 +37,11 @@ pub struct Dispatch<T>
 where T: EthSpec,
 {
     simulation: Simulation<T>,
-    receiver: Receiver<Operation<T>>,
+    receiver: Receiver<Operation>,
 }
 
 impl<T: EthSpec> Dispatch<T> {
-    pub fn new(simulation: Simulation<T>) -> (Self, Handle<T>) {
+    pub fn new(simulation: Simulation<T>) -> (Self, Handle) {
         let (sender, receiver) = channel(1);
         let handle = Handle {
             sender
@@ -94,14 +91,11 @@ impl<T: EthSpec> Dispatch<T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Handle<T>
-where
-    T: EthSpec
-{
-    sender: Sender<Operation<T>>,
+pub struct Handle {
+    sender: Sender<Operation>,
 }
 
-impl<T: EthSpec> Handle<T> {
+impl Handle {
     pub async fn create_execution_environment(
         &mut self,
         arg: args::CreateExecutionEnvironment,
@@ -115,7 +109,7 @@ impl<T: EthSpec> Handle<T> {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<eth2_types::slot_epoch_root::ShardSlot> {
+    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<u64> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::CreateShardBlock(arg, sender)).await;
@@ -139,7 +133,7 @@ impl<T: EthSpec> Handle<T> {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_shard_block(&mut self, arg: args::GetShardBlock) -> Result<eth2_types::shard_block::ShardBlock<T>> {
+    pub async fn get_shard_block(&mut self, arg: args::GetShardBlock) -> Result<args::ShardBlock> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardBlock(arg, sender)).await;
@@ -147,7 +141,7 @@ impl<T: EthSpec> Handle<T> {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_shard_state(&mut self, arg: args::GetShardState) -> Result<eth2_types::shard_state::ShardState<T>> {
+    pub async fn get_shard_state(&mut self, arg: args::GetShardState) -> Result<args::ShardState> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardState(arg, sender)).await;

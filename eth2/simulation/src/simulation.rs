@@ -66,9 +66,10 @@ impl<T: EthSpec> Simulation<T> {
 
     /// Add a new shard block containing a list of transactions that need to be executed
     /// Execute all transactions on the appropriate shards / EEs, return ShardBlock index
-    pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<ShardSlot> {
+    pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<u64> {
         // Get the specified ShardState (if it exists)
-        let shard_index: usize = a.shard.into();
+        let shard_index = a.shard_index as usize;
+        let shard = Shard::new(a.shard_index);
         let shard_state = self
             .store
             .current_beacon_state
@@ -79,12 +80,8 @@ impl<T: EthSpec> Simulation<T> {
                 index: shard_index,
             })?;
 
-        // Create the shard block from args
-        let transactions =
-            VariableList::new(a.shard_transactions).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("number of shard transactions per block"),
-            })?;
-        let shard_block = ShardBlock { transactions };
+        // Create the internal shard block from args
+        let shard_block: ShardBlock<T> = ShardBlock::try_from(a.shard_block)?;
 
         // Execute transactions and update shard state for all transactions
         for transaction in shard_block.transactions.iter() {
@@ -125,7 +122,7 @@ impl<T: EthSpec> Simulation<T> {
         let shard_blocks_for_shard =
             self.store
                 .shard_blocks_by_shard
-                .get_mut(&a.shard)
+                .get_mut(&shard)
                 .ok_or(Error::OutOfBounds {
                     index: shard_index,
                     what: WhatBound::Shard,
@@ -133,7 +130,7 @@ impl<T: EthSpec> Simulation<T> {
         shard_blocks_for_shard.push(shard_block);
 
         // Return the slot of the newly added shard block
-        Ok(ShardSlot::new((shard_blocks_for_shard.len() - 1) as u64))
+        Ok((shard_blocks_for_shard.len() - 1) as u64)
     }
 
     /// Get an EE that was previously added
@@ -160,7 +157,7 @@ impl<T: EthSpec> Simulation<T> {
         a: args::GetExecutionEnvironmentState,
     ) -> Result<[u8; 32]> {
         let ee_index = a.ee_index as usize;
-        let shard_index = a.shard as usize;
+        let shard_index = a.shard_index as usize;
         let shard_state = self
             .store
             .current_beacon_state
@@ -181,27 +178,28 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get a shard block that was previously added
-    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<ShardBlock<T>> {
-        let shard_index: usize = a.shard.into();
-        let shard_block_index: usize = a.shard_slot.into();
-        let shard = self
+    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<args::ShardBlock> {
+        let shard_index = a.shard_index as usize;
+        let shard_slot_index = a.shard_slot_index as usize;
+        let shard = Shard::new(a.shard_index);
+        let shard_blocks = self
             .store
             .shard_blocks_by_shard
-            .get(&a.shard)
+            .get(&shard)
             .ok_or(Error::OutOfBounds {
                 what: WhatBound::Shard,
                 index: shard_index,
             })?;
-        let shard_block = shard.get(shard_block_index).ok_or(Error::OutOfBounds {
+        let shard_block = shard_blocks.get(shard_slot_index).ok_or(Error::OutOfBounds {
             what: WhatBound::ShardBlock(shard_index),
-            index: shard_block_index,
+            index: shard_slot_index,
         })?;
-        Ok(shard_block.clone())
+        Ok(shard_block.clone().into())
     }
 
     /// Get the specified ShardState, will contain EE states
-    pub fn get_shard_state(&self, a: args::GetShardState) -> Result<ShardState<T>> {
-        let shard_index: usize = a.shard.into();
+    pub fn get_shard_state(&self, a: args::GetShardState) -> Result<args::ShardState> {
+        let shard_index = a.shard_index as usize;
         let shard_state = self
             .store
             .current_beacon_state
@@ -211,7 +209,7 @@ impl<T: EthSpec> Simulation<T> {
                 what: WhatBound::Shard,
                 index: shard_index,
             })?;
-        Ok(shard_state.clone())
+        Ok(shard_state.clone().into())
     }
 }
 
@@ -232,8 +230,8 @@ pub mod args {
     }
     #[derive(Debug)]
     pub struct CreateShardBlock {
-        pub shard: Shard,
-        pub shard_transactions: Vec<super::ShardTransaction>,
+        pub shard_index: u64,
+        pub shard_block: ShardBlock,
     }
     #[derive(Debug)]
     pub struct GetExecutionEnvironment {
@@ -242,16 +240,16 @@ pub mod args {
     #[derive(Debug)]
     pub struct GetExecutionEnvironmentState {
         pub ee_index: u64,
-        pub shard: u64,
+        pub shard_index: u64,
     }
     #[derive(Debug)]
     pub struct GetShardBlock {
-        pub shard: Shard,
-        pub shard_slot: ShardSlot,
+        pub shard_index: u64,
+        pub shard_slot_index: u64,
     }
     #[derive(Debug)]
     pub struct GetShardState {
-        pub shard: Shard,
+        pub shard_index: u64,
     }
 
     // Interface structs
@@ -269,6 +267,10 @@ pub mod args {
     #[derive(Debug)]
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
+    }
+    #[derive(Debug)]
+    pub struct ShardState {
+        pub execution_environment_states: Vec<[u8; 32]>,
     }
 
     // Conversions to/from interface structs <--> internal structs
@@ -352,11 +354,31 @@ pub mod args {
         }
     }
 
-    // pub struct ShardTransaction {
-    //
-    // }
-
-
+    impl<T: EthSpec> From<super::ShardState<T>> for ShardState {
+        fn from(value: super::ShardState<T>) -> Self {
+            let execution_environment_states: Vec<[u8; 32]> = value.execution_environment_states.into_iter().map(|t| -> [u8; 32] {
+                t.0
+            }).collect();
+            Self {
+                execution_environment_states,
+            }
+        }
+    }
+    impl<T: EthSpec> TryFrom<ShardState> for super::ShardState<T> {
+        type Error = crate::Error;
+        fn try_from(value: ShardState) -> Result<Self, Self::Error> {
+            let execution_environment_states: Vec<super::Root>  = value.execution_environment_states.into_iter().map(|t| -> Root {
+                Root::from(t)
+            }).collect();
+            // TODO(gregt): Switch this to wrap the underlying error
+            let execution_environment_states = VariableList::new(execution_environment_states).map_err(|_| Error::MaxLengthExceeded {
+                what: format!("execution environment states"),
+            })?;
+            Ok(Self {
+                execution_environment_states,
+            })
+        }
+    }
 }
 
 #[cfg(test)]
