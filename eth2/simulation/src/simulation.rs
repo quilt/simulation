@@ -213,6 +213,22 @@ impl<T: EthSpec> Simulation<T> {
     }
 }
 
+trait ToBytes32 {
+    fn to_bytes32(&self) -> Result<[u8; 32]>;
+}
+
+impl ToBytes32 for Vec<u8> {
+    fn to_bytes32(&self) -> Result<[u8; 32]> {
+        if self.len() == 32 {
+            let mut ret: [u8; 32] = [0; 32];
+            ret.copy_from_slice(&self[..]);
+            Ok(ret)
+        } else {
+            Err(Error::InvalidBytes32)
+        }
+    }
+}
+
 /// Holds all the types necessary to interact with the `Simulation` struct
 // TODO: Longer-term, we *may* not want to directly return internal representations of state from
 // `Simulation` methods.  If/when that time comes, we will add the external-facing return values
@@ -259,7 +275,7 @@ pub mod args {
         pub initial_state: [u8; 32],
         pub wasm_code: Vec<u8>,
     }
-    #[derive(Debug)]
+    #[derive(Clone, Debug, PartialEq)]
     pub struct ShardTransaction {
         pub data: Vec<u8>,
         pub ee_index: u64,
@@ -467,7 +483,7 @@ mod tests {
 
         // Set up args::GetExecutionEnvironment
         let get_ee_args = args::GetExecutionEnvironment {
-            ee_index: ee_index,
+            ee_index,
         };
         let get_ee_args2 = args::GetExecutionEnvironment {
             ee_index: ee_index2,
@@ -481,10 +497,10 @@ mod tests {
 
         // Make sure the EEs have the correct initial_state specified for every shard
         let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
-        for i in 0..max_shards {
+        for i in 0..max_shards as u64 {
             let get_ee_state_args = args::GetExecutionEnvironmentState {
                 ee_index,
-                shard: i,
+                shard_index: i,
             };
             let ee_state = simulation
                 .get_execution_environment_state(get_ee_state_args)
@@ -498,22 +514,22 @@ mod tests {
         initial_state: [u8; 32],
         data: Vec<u8>,
         expected_post_state: [u8; 32],
-        shard: u64,
+        shard_index: u64,
     ) -> (
         Simulation<MainnetEthSpec>,
-        ShardTransaction,
+        args::ShardTransaction,
         ShardSlot,
         EeIndex,
     ) {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Create EE with the specified code and initial state
-        let interface_ee = args::ExecutionEnvironment {
+        let ee = args::ExecutionEnvironment {
             initial_state,
             wasm_code: wasm_code.to_vec(),
         };
         let create_ee_args = args::CreateExecutionEnvironment {
-            ee: interface_ee,
+            ee,
         };
         let ee_index = simulation
             .create_execution_environment(create_ee_args)
@@ -521,24 +537,27 @@ mod tests {
         assert_eq!(ee_index, 0);
 
         // Set up a shard transaction with the specified data
-        let shard_transaction = ShardTransaction {
-            data: VariableList::new(data).unwrap(),
+        let shard_transaction = args::ShardTransaction {
+            data,
             ee_index,
         };
         let shard_transaction_copy = shard_transaction.clone();
 
         // Create a shard block with the one transaction in it
+        let shard_block = args::ShardBlock {
+            transactions: vec![shard_transaction],
+        };
         let create_shard_block_args = args::CreateShardBlock {
-            shard,
-            shard_transactions: vec![shard_transaction],
+            shard_index,
+            shard_block,
         };
         // This creates the block and runs all the transactions inside it
-        let shard_slot = simulation
+        let shard_slot_index = simulation
             .create_shard_block(create_shard_block_args)
             .unwrap();
 
         // Get back the EE state to make sure it matches the expected_post_state
-        let get_ee_state_args = args::GetExecutionEnvironmentState { ee_index, shard };
+        let get_ee_state_args = args::GetExecutionEnvironmentState { ee_index, shard_index };
         let ee_post_state = simulation
             .get_execution_environment_state(get_ee_state_args)
             .unwrap();
@@ -547,26 +566,29 @@ mod tests {
             "actual post state root should match expected post state root"
         );
 
-        (simulation, shard_transaction_copy, shard_slot, ee_index)
+        (simulation, shard_transaction_copy, ShardSlot::new(shard_slot_index), EeIndex::new(ee_index))
     }
 
     #[test]
     fn run_scout_helloworld_and_get_shard_block_and_state() {
-        let initial_state = Root::from([0; 32]);
-        let expected_post_state = Root::from([0; 32]);
+        let initial_state = [0; 32];
+        let expected_post_state = [0; 32];
         let data: Vec<u8> = Vec::new();
-        let shard = Shard::new(0);
+        let shard_index = 0;
         let (simulation, shard_transaction, shard_slot, ee_index) =
             test_block_with_single_transaction(
                 include_bytes!("../tests/phase2_helloworld.wasm"),
                 initial_state,
                 data,
                 expected_post_state,
-                shard,
+                shard_index,
             );
 
+        let ee_index: u64 = ee_index.into();
+
         // Test that GetShardBlock is working as expected
-        let get_shard_block_args = args::GetShardBlock { shard, shard_slot };
+        let shard_slot_index: u64 = shard_slot.into();
+        let get_shard_block_args = args::GetShardBlock { shard_index, shard_slot_index };
         let shard_block = simulation.get_shard_block(get_shard_block_args).unwrap();
 
         // Make sure the transaction on the retrieved block matches the transaction
@@ -577,10 +599,10 @@ mod tests {
         );
 
         // Test that GetShardState is working as expected
-        let get_shard_state_args = args::GetShardState { shard };
+        let get_shard_state_args = args::GetShardState { shard_index };
         let shard_state = simulation.get_shard_state(get_shard_state_args).unwrap();
-        let ee_index: usize = ee_index.into();
-        let ee_state: &Root = shard_state
+        let ee_index = ee_index as usize;
+        let ee_state = shard_state
             .execution_environment_states
             .get(ee_index)
             .unwrap();
@@ -588,20 +610,19 @@ mod tests {
     }
     #[test]
     fn run_scout_bazaar_test() {
-        let initial_state =
-            Root::try_from("22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4")
-                .unwrap();
-        let expected_post_state =
-            Root::try_from("29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc")
-                .unwrap();
+        let initial_state = "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4";
+        let initial_state = Vec::from_hex(initial_state).unwrap().to_bytes32().unwrap();
+        let expected_post_state = "29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc";
+        let expected_post_state = Vec::from_hex(expected_post_state).unwrap().to_bytes32().unwrap();
         let data: Vec<u8> = Vec::from_hex("5c0000005000000001000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000001010101010101010101010101010101010101010101010101010101010101010400000000000000").unwrap();
-        let (simulation, shard_transaction, shard_slot, ee_index) =
+        let shard_index = 0;
+        let (_simulation, _shard_transaction, _shard_slot, _ee_index) =
             test_block_with_single_transaction(
                 include_bytes!("../tests/phase2_bazaar.wasm"),
                 initial_state,
                 data,
                 expected_post_state,
-                Shard::new(0),
+                shard_index,
             );
     }
 }
