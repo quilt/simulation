@@ -17,7 +17,7 @@ pub enum Error {
     Config { source: config::ConfigError },
 }
 
-pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle<T>) -> Result<()> {
+pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
     let config = config::Config::build(config::Environment::Development)
         .address(format!("{}", notion.bind.ip()))
         .port(notion.bind.port())
