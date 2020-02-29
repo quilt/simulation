@@ -33,7 +33,8 @@ pub enum Error {
     MaxLengthExceeded { what: String },
     #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds { what: WhatBound, index: usize },
+    InvalidBytes32,
 }
 
-pub use simulation::Simulation;
-pub use simulation::args;
+pub use crate::simulation::Simulation;
+pub use crate::simulation::args;
