@@ -11,7 +11,7 @@ mod dispatch;
 
 use futures_util::future::{self, FutureExt};
 use futures_util::pin_mut;
-use simulation::{Simulation};
+use simulation::Simulation;
 use snafu::{Backtrace, ResultExt, Snafu};
 use std::marker::PhantomData;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -113,21 +113,20 @@ impl<T: EthSpec> Notion<T> {
     async fn async_run(self) -> Result<()> {
 //        let simulation = ethereum::Simulation::new();
         let simulation: Simulation<T> = Simulation::new();
-        Ok(())
-//        let (dispatch, handle) = ethereum::Dispatch::new(simulation);
-//
-//        let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Ethereum)));
-//        let api_run =
-//            tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
-//
-//        pin_mut!(eth_run);
-//        pin_mut!(api_run);
-//
-//        future::try_select(eth_run, api_run)
-//            .await
-//            .unwrap()
-//            .factor_first()
-//            .0
+        let (dispatch, handle) = dispatch::Dispatch::new(simulation);
+
+        let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Dispatch)));
+        let api_run =
+           tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
+
+        pin_mut!(eth_run);
+        pin_mut!(api_run);
+
+        future::try_select(eth_run, api_run)
+           .await
+           .unwrap()
+           .factor_first()
+           .0
     }
 }
 

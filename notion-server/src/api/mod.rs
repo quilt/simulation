@@ -28,7 +28,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
         .mount(
             "/",
             routes![
-//                create_execution_environment,
+               create_execution_environment,
 //                create_shard_block,
 //                get_execution_environment,
 //                get_execution_environment_state,
@@ -42,39 +42,34 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
     Ok(())
 }
 
-//#[tokio::main] // TODO: Check efficiency of tokio::main. Does it create or reuse thread pools?
-//#[post("/beacon/execution-environments", data = "<ee>")]
-//async fn create_execution_environment<T: EthSpec>(
-//    ee: Json<args::ExecutionEnvironment>,
-//    handle: State<Handle<T>>,
-//) -> DispatchResult<status::Created<()>> {
-//    let ee = ee.into_inner();
-//
-//    let arg = args::CreateExecutionEnvironment {
-//        execution_environment: ee.clone(),
-//    };
-//
-//    let idx = handle.clone().create_execution_environment(arg).await?;
-//    let location = uri!(show_execution_environment: idx);
-//
-//    Ok(status::Created(location.to_string(), None))
-//}
-//
-//#[tokio::main]
-//#[get("/beacon/execution-environments/<index>")]
-//async fn get_execution_environment<T: EthSpec>(
-//    index: u32,
-//    handle: State<Handle<T>>,
-//) -> DispatchResult<Json<args::ExecutionEnvironment>> {
+#[tokio::main] // TODO: Check efficiency of tokio::main. Does it create or reuse thread pools?
+#[post("/create-execution-environment", data = "<args>")]
+async fn create_execution_environment(
+   args: Json<args::CreateExecutionEnvironment>,
+   handle: State<Handle>,
+) -> DispatchResult<Json<u64>> {
+   let args = args.into_inner();
+
+   let ee_index = handle.clone().create_execution_environment(args).await?;
+
+   Ok(Json(ee_index))
+}
+
+// #[tokio::main]
+// #[post("/get-execution-environments", data = "<args>")]
+// async fn get_execution_environment(
+//    args: Json<args::GetExecutionEnvironment>,
+//    handle: State<Handle>,
+// ) -> DispatchResult<Json<args::ExecutionEnvironment>> {
 //    let arg = args::GetExecutionEnvironment {
-//        execution_environment_index: index,
+//        ee_index,
 //    };
 //
-//    let ee = handle.clone().execution_environment(arg).await?;
+//    let ee = handle.clone().get_execution_environment(arg).await?;
 //    Ok(Json(ee))
-//}
-//
-//
+// }
+
+
 //#[tokio::main]
 //#[post("/shards", data = "<shard>")]
 //async fn create_shard_chain(
