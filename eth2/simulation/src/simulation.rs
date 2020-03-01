@@ -334,6 +334,7 @@ pub mod args {
     }
     #[derive(Debug, Deserialize, Serialize)]
     pub struct ShardState {
+
         pub execution_environment_states: Vec<[u8; 32]>,
     }
 
