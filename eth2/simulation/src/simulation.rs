@@ -289,26 +289,26 @@ pub mod args {
     pub struct CreateExecutionEnvironment {
         pub ee: ExecutionEnvironment,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct CreateShardBlock {
         pub shard_index: u64,
         pub shard_block: ShardBlock,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct GetExecutionEnvironment {
         pub ee_index: u64,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct GetExecutionEnvironmentState {
         pub ee_index: u64,
         pub shard_index: u64,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct GetShardBlock {
         pub shard_index: u64,
         pub shard_slot_index: u64,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct GetShardState {
         pub shard_index: u64,
     }
@@ -323,16 +323,16 @@ pub mod args {
         #[serde(with = "super::base64_vec")]
         pub wasm_code: Vec<u8>,
     }
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
     pub struct ShardTransaction {
         pub data: Vec<u8>,
         pub ee_index: u64,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
     }
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct ShardState {
         pub execution_environment_states: Vec<[u8; 32]>,
     }
