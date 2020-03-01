@@ -229,6 +229,50 @@ impl ToBytes32 for Vec<u8> {
     }
 }
 
+mod base64_vec {
+    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
+    use serde::Serializer;
+
+    pub fn serialize<T, S>(bytes: T, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            T: AsRef<[u8]>,
+            S: Serializer,
+    {
+        let txt = base64::encode(bytes.as_ref());
+        serializer.serialize_str(&txt)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let txt = String::deserialize(deserializer)?;
+
+        base64::decode(&txt)
+            .map_err(|_| D::Error::invalid_value(Unexpected::Str(&txt), &"base64 encoded bytes"))
+    }
+}
+
+mod base64_arr {
+    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
+    use serde::Serializer;
+
+    use super::ToBytes32;
+
+    pub use super::base64_vec::serialize;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let vec = super::base64_vec::deserialize(deserializer)?;
+
+        vec.to_bytes32().map_err(|_| {
+            D::Error::invalid_value(Unexpected::Bytes(&vec), &"exactly 32 base64 encoded bytes")
+        })
+    }
+}
+
 /// Holds all the types necessary to interact with the `Simulation` struct
 // TODO: Longer-term, we *may* not want to directly return internal representations of state from
 // `Simulation` methods.  If/when that time comes, we will add the external-facing return values
@@ -237,10 +281,11 @@ impl ToBytes32 for Vec<u8> {
 // instead of the more generic `[u8; 32]`)
 pub mod args {
     // TODO: can remove this??
-    use super::*;
+    use serde::{Deserialize, Serialize};
     use std::convert::{TryFrom, TryInto};
+    use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct CreateExecutionEnvironment {
         pub ee: ExecutionEnvironment,
     }
@@ -270,9 +315,12 @@ pub mod args {
 
     // Interface structs
 
-    #[derive(Debug)]
+    #[derive(Clone, Debug, Deserialize, Serialize)]
     pub struct ExecutionEnvironment {
+        #[serde(with = "super::base64_arr")]
         pub initial_state: [u8; 32],
+
+        #[serde(with = "super::base64_vec")]
         pub wasm_code: Vec<u8>,
     }
     #[derive(Clone, Debug, PartialEq)]

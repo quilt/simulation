@@ -5,7 +5,9 @@ authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+base64 = "0.11.0"
 ewasm = "0.2.2"
+serde = { version = "1.0", features = ["derive"] }
 snafu = "0.6.0"
 ssz_types = { path = "../utils/ssz_types" }
 types = { path = "../types" }
