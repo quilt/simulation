@@ -30,7 +30,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
             routes![
                create_execution_environment,
 //                create_shard_block,
-//                get_execution_environment,
+               get_execution_environment,
 //                get_execution_environment_state,
 //                get_shard_block,
 //                get_shard_state,
@@ -48,26 +48,23 @@ async fn create_execution_environment(
    args: Json<args::CreateExecutionEnvironment>,
    handle: State<Handle>,
 ) -> DispatchResult<Json<u64>> {
-   let args = args.into_inner();
+    let args = args.into_inner();
 
-   let ee_index = handle.clone().create_execution_environment(args).await?;
+    let ee_index = handle.clone().create_execution_environment(args).await?;
 
-   Ok(Json(ee_index))
+    Ok(Json(ee_index))
 }
 
-// #[tokio::main]
-// #[post("/get-execution-environments", data = "<args>")]
-// async fn get_execution_environment(
-//    args: Json<args::GetExecutionEnvironment>,
-//    handle: State<Handle>,
-// ) -> DispatchResult<Json<args::ExecutionEnvironment>> {
-//    let arg = args::GetExecutionEnvironment {
-//        ee_index,
-//    };
-//
-//    let ee = handle.clone().get_execution_environment(arg).await?;
-//    Ok(Json(ee))
-// }
+#[tokio::main]
+#[post("/get-execution-environment", data = "<args>")]
+async fn get_execution_environment(
+   args: Json<args::GetExecutionEnvironment>,
+   handle: State<Handle>,
+) -> DispatchResult<Json<args::ExecutionEnvironment>> {
+    let args = args.into_inner();
+    let ee = handle.clone().get_execution_environment(args).await?;
+    Ok(Json(ee))
+}
 
 
 //#[tokio::main]
