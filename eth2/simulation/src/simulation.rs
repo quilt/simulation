@@ -28,7 +28,7 @@ impl<T: EthSpec> Simulation<T> {
     /// Add a new execution environment, return EE index
     pub fn create_execution_environment(
         &mut self,
-        a: args::CreateExecutionEnvironment,
+        a: args::simulation,
     ) -> Result<u64> {
         // Create internal EE struct from args
         let ee = ExecutionEnvironment::try_from(a.ee)?;
@@ -291,11 +291,8 @@ mod base64_arr {
 }
 
 /// Holds all the types necessary to interact with the `Simulation` struct
-// TODO: Longer-term, we *may* not want to directly return internal representations of state from
-// `Simulation` methods.  If/when that time comes, we will add the external-facing return values
-// to this mod.  For now, however, we'll just directly return the internal state of the Simulation.
-// (eg. a `Simulation.get_execution_environment_state` will return an internal `Root` object,
-// instead of the more generic `[u8; 32]`)
+/// These public interface values do not hold "internal" types, and instead only use "basic" Rust
+/// types.
 pub mod args {
     // TODO: can remove this??
     use serde::{Deserialize, Serialize};

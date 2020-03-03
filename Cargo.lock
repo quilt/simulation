@@ -1082,9 +1082,21 @@ dependencies = [
  "ewasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simulation_args 0.1.0",
  "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ssz_types 0.1.0",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
+]
+
+[[package]]
+name = "simulation_args"
+version = "0.1.0"
+dependencies = [
+ "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ssz_types 0.1.0",
  "types 0.1.0",
 ]
 
