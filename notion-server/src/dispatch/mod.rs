@@ -1,5 +1,6 @@
 use eth2_types::eth_spec::EthSpec;
 pub use simulation::{args, Error as SimulationError, Simulation};
+pub use simulation_args;
 use snafu::{OptionExt, ResultExt, Snafu};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use types as eth2_types;
@@ -21,7 +22,7 @@ pub enum Error {
 
 #[derive(Debug)]
 enum Operation {
-    CreateExecutionEnvironment(args::CreateExecutionEnvironment, Sender<Result<u64>>),
+    CreateExecutionEnvironment(simulation_args::CreateExecutionEnvironment, Sender<Result<u64>>),
     CreateShardBlock(args::CreateShardBlock, Sender<Result<u64>>),
     GetExecutionEnvironment(
         args::GetExecutionEnvironment,
@@ -98,7 +99,7 @@ pub struct Handle {
 impl Handle {
     pub async fn create_execution_environment(
         &mut self,
-        arg: args::CreateExecutionEnvironment,
+        arg: simulation_args::CreateExecutionEnvironment,
     ) -> Result<u64> {
         let (sender, mut receiver) = channel(1);
 

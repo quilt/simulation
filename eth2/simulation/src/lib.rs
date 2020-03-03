@@ -1,7 +1,8 @@
 pub mod simulation;
 mod store;
 
-use snafu::Snafu;
+use simulation_args::Error as SimulationArgsError;
+use snafu::{Backtrace, Snafu};
 use std::fmt;
 
 /// Shorthand for result types returned from the Simulation simulation.
@@ -29,11 +30,12 @@ impl fmt::Display for WhatBound {
 /// Errors arising from the simulation.
 #[derive(Debug, Snafu)]
 pub enum Error {
+    ArgsError { backtrace: Backtrace, source: SimulationArgsError },
+    InvalidBytes32,
     #[snafu(display("{} exceeds max allowable length", what))]
     MaxLengthExceeded { what: String },
     #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds { what: WhatBound, index: usize },
-    InvalidBytes32,
 }
 
 pub use crate::simulation::{args, Simulation};

@@ -1,4 +1,4 @@
-use crate::dispatch::{args, Handle, Result as DispatchResult};
+use crate::dispatch::{args, Handle, Result as DispatchResult, simulation_args};
 use crate::Notion;
 
 use rocket::response::status;
@@ -45,7 +45,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
 #[tokio::main] // TODO: Check efficiency of tokio::main. Does it create or reuse thread pools?
 #[post("/create-execution-environment", data = "<args>")]
 async fn create_execution_environment(
-   args: Json<args::CreateExecutionEnvironment>,
+   args: Json<simulation_args::CreateExecutionEnvironment>,
    handle: State<Handle>,
 ) -> DispatchResult<Json<u64>> {
     let args = args.into_inner();

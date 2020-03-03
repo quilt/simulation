@@ -1,6 +1,8 @@
 use crate::store::Store;
-use crate::{Error, Result, WhatBound};
+use crate::{ArgsError, Error, Result, WhatBound};
 use ewasm::{Execute, RootRuntime};
+use simulation_args;
+use snafu::ResultExt;
 use std::convert::TryFrom;
 use ssz_types::VariableList;
 use types::eth_spec::EthSpec;
@@ -28,10 +30,12 @@ impl<T: EthSpec> Simulation<T> {
     /// Add a new execution environment, return EE index
     pub fn create_execution_environment(
         &mut self,
-        a: args::simulation,
+        a: simulation_args::CreateExecutionEnvironment,
     ) -> Result<u64> {
         // Create internal EE struct from args
-        let ee = ExecutionEnvironment::try_from(a.ee)?;
+        let ee = ExecutionEnvironment::try_from(a.ee).context(
+            ArgsError,
+        )?;
         let cloned_initial_state = ee.initial_state.clone();
 
         // Add EE code to beacon chain
