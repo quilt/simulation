@@ -229,6 +229,7 @@ impl ToBytes32 for Vec<u8> {
     }
 }
 
+// TODO(gregt): Clean this up and move to separate package
 mod base64_vec {
     use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
     use serde::Serializer;
@@ -313,6 +314,17 @@ pub mod args {
         pub shard_index: u64,
     }
 
+    /// Defines custom serialization for basic return types
+    /// If serialization is required, appropriate basic types returned from the Simulation can be
+    /// wrapped in the appropriate enum entry to tell Serde how to custom-serialize the type.
+    #[derive(Serialize, Deserialize)]
+    #[serde(untagged)]
+    pub enum CustomSerializedReturnTypes {
+        #[serde(with = "super::base64_arr")]
+        Base64EncodedRoot([u8; 32]),
+    }
+
+
     // Interface structs
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -334,7 +346,6 @@ pub mod args {
     }
     #[derive(Debug, Deserialize, Serialize)]
     pub struct ShardState {
-
         pub execution_environment_states: Vec<[u8; 32]>,
     }
 

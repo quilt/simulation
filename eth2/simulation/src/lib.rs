@@ -36,5 +36,4 @@ pub enum Error {
     InvalidBytes32,
 }
 
-pub use crate::simulation::Simulation;
-pub use crate::simulation::args;
+pub use crate::simulation::{args, Simulation};
