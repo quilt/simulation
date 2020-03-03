@@ -33,7 +33,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
                get_execution_environment,
                get_execution_environment_state,
                get_shard_block,
-               // get_shard_state,
+               get_shard_state,
             ],
         )
         .manage(handle)
@@ -101,41 +101,13 @@ async fn get_shard_block(
     Ok(Json(shard_block))
 }
 
-// TODO(gregt): Make it so we can return ShardState object...
-// #[tokio::main]
-// #[post("/get-shard-state", data = "<args>")]
-// async fn get_shard_state(
-//     args: Json<args::GetShardState>,
-//     handle: State<Handle>,
-// ) -> DispatchResult<Json<args::ShardState>> {
-//     let args = args.into_inner();
-//     let shard_state = handle.clone().get_shard_state(args).await?;
-//     Ok(Json(shard_state))
-// }
-
-
-//#[tokio::main]
-//#[post("/shards", data = "<shard>")]
-//async fn create_shard_chain(
-//    shard: Json<args::CreateShardChain>,
-//    handle: State<Handle>,
-//) -> DispatchResult<status::Created<()>> {
-//    let shard = shard.into_inner();
-//
-//    let idx = handle.clone().create_shard_chain(shard).await?;
-//    let location = uri!(show_shard_chain: idx);
-//
-//    Ok(status::Created(location.to_string(), None))
-//}
-//
-//#[tokio::main]
-//#[get("/shards/<index>")]
-//async fn show_shard_chain(index: u32, handle: State<Handle>) -> DispatchResult<Json<args::ShardChain>> {
-//    let arg = args::GetShardChain {
-//        shard_chain_index: index,
-//    };
-//
-//    let shard = handle.clone().shard_chain(arg).await?;
-//
-//    Ok(Json(shard))
-//}
+#[tokio::main]
+#[post("/get-shard-state", data = "<args>")]
+async fn get_shard_state(
+    args: Json<args::GetShardState>,
+    handle: State<Handle>,
+) -> DispatchResult<Json<args::ShardState>> {
+    let args = args.into_inner();
+    let shard_state = handle.clone().get_shard_state(args).await?;
+    Ok(Json(shard_state))
+}
