@@ -4,7 +4,7 @@
 use crate::beacon_state::BeaconState;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use typenum::{Unsigned, U1024, U65536, U262144};
+use typenum::{Unsigned, U64, U1024, U65536, U262144};
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
@@ -91,7 +91,7 @@ impl EthSpec for MainnetEthSpec {
     //    type MaxDeposits = U16;
     //    type MaxVoluntaryExits = U16;
     //    type MaxPendingAttestations = U4096; // 128 max attestations * 32 slots per epoch
-    type MaxShards = U1024;
+    type MaxShards = U64;
 }
 
 pub type FoundationBeaconState = BeaconState<MainnetEthSpec>;

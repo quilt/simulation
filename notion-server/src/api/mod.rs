@@ -31,7 +31,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
                create_execution_environment,
                create_shard_block,
                get_execution_environment,
-               // get_execution_environment_state,
+               get_execution_environment_state,
                get_shard_block,
                // get_shard_state,
             ],
@@ -78,16 +78,17 @@ async fn get_execution_environment(
 }
 
 // TODO(gregt): Make it so we can pass [u8; 32] back "raw"
-// #[tokio::main]
-// #[post("/get-execution-environment-state", data = "<args>")]
-// async fn get_execution_environment_state(
-//     args: Json<args::GetExecutionEnvironmentState>,
-//     handle: State<Handle>,
-// ) -> DispatchResult<Json<args::ExecutionEnvironment>> {
-//     let args = args.into_inner();
-//     let ee_state_root = handle.clone().get_execution_environment(args).await?;
-//     Ok(Json(ee_state_root))
-// }
+#[tokio::main]
+#[post("/get-execution-environment-state", data = "<args>")]
+async fn get_execution_environment_state(
+    args: Json<args::GetExecutionEnvironmentState>,
+    handle: State<Handle>,
+) -> DispatchResult<Json<args::CustomSerializedReturnTypes>> {
+    let args = args.into_inner();
+    let ee_state_root = handle.clone().get_execution_environment_state(args).await?;
+    let encodeable_ee_state_root = args::CustomSerializedReturnTypes::Base64EncodedRoot(ee_state_root);
+    Ok(Json(encodeable_ee_state_root))
+}
 
 #[tokio::main]
 #[post("/get-shard-block", data = "<args>")]
