@@ -229,6 +229,22 @@ impl ToBytes32 for Vec<u8> {
     }
 }
 
+mod vec_base64_arrs {
+    use serde::ser::{Serialize, Serializer, SerializeSeq, SerializeMap};
+
+    pub fn serialize<S>(vec: &Vec<[u8; 32]>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(vec.len()))?;
+        for bytes_arr in vec {
+            let txt = base64::encode(bytes_arr.as_ref());
+            seq.serialize_element(&txt)?;
+        }
+        seq.end()
+    }
+}
+
 // TODO(gregt): Clean this up and move to separate package
 mod base64_vec {
     use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
@@ -324,7 +340,6 @@ pub mod args {
         Base64EncodedRoot([u8; 32]),
     }
 
-
     // Interface structs
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -344,8 +359,10 @@ pub mod args {
     pub struct ShardBlock {
         pub transactions: Vec<ShardTransaction>,
     }
+
     #[derive(Debug, Deserialize, Serialize)]
     pub struct ShardState {
+        #[serde(serialize_with = "super::vec_base64_arrs::serialize")]
         pub execution_environment_states: Vec<[u8; 32]>,
     }
 
