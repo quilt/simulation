@@ -7,4 +7,5 @@ members = [
     "eth2/simulation_args",
     'notion-cli',
     'notion-server',
+    'simulation-client',
 ]

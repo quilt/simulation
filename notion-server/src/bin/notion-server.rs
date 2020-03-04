@@ -7,7 +7,7 @@ use types::eth_spec::MainnetEthSpec;
 
 #[derive(StructOpt, Debug)]
 struct Opt {
-    #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:0")]
+    #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:8999")]
     /// IP address and port to listen on for API requests.
     bind: SocketAddr,
 }
