@@ -224,9 +224,10 @@ impl<T: EthSpec> Simulation<T> {
 mod tests {
     use super::*;
     use hex::FromHex;
-    use std::convert::TryFrom;
     use typenum::Unsigned;
     use types::eth_spec::MainnetEthSpec;
+    use types::slot_epoch_root::{EeIndex, ShardSlot};
+
 
     #[test]
     fn simulation_new() {
