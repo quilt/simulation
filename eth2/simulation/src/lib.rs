@@ -38,4 +38,4 @@ pub enum Error {
     OutOfBounds { what: WhatBound, index: usize },
 }
 
-pub use crate::simulation::{args, Simulation};
+pub use crate::simulation::{Simulation};

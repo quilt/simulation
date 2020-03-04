@@ -219,265 +219,6 @@ impl<T: EthSpec> Simulation<T> {
     }
 }
 
-trait ToBytes32 {
-    fn to_bytes32(&self) -> Result<[u8; 32]>;
-}
-
-impl ToBytes32 for Vec<u8> {
-    fn to_bytes32(&self) -> Result<[u8; 32]> {
-        if self.len() == 32 {
-            let mut ret: [u8; 32] = [0; 32];
-            ret.copy_from_slice(&self[..]);
-            Ok(ret)
-        } else {
-            Err(Error::InvalidBytes32)
-        }
-    }
-}
-
-mod vec_base64_arrs {
-    use serde::ser::{Serialize, Serializer, SerializeSeq, SerializeMap};
-
-    pub fn serialize<S>(vec: &Vec<[u8; 32]>, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(vec.len()))?;
-        for bytes_arr in vec {
-            let txt = base64::encode(bytes_arr.as_ref());
-            seq.serialize_element(&txt)?;
-        }
-        seq.end()
-    }
-}
-
-// TODO(gregt): Clean this up and move to separate package
-mod base64_vec {
-    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
-    use serde::Serializer;
-
-    pub fn serialize<T, S>(bytes: T, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            T: AsRef<[u8]>,
-            S: Serializer,
-    {
-        let txt = base64::encode(bytes.as_ref());
-        serializer.serialize_str(&txt)
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-        where
-            D: Deserializer<'de>,
-    {
-        let txt = String::deserialize(deserializer)?;
-
-        base64::decode(&txt)
-            .map_err(|_| D::Error::invalid_value(Unexpected::Str(&txt), &"base64 encoded bytes"))
-    }
-}
-
-mod base64_arr {
-    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
-    use serde::Serializer;
-
-    use super::ToBytes32;
-
-    pub use super::base64_vec::serialize;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
-        where
-            D: Deserializer<'de>,
-    {
-        let vec = super::base64_vec::deserialize(deserializer)?;
-
-        vec.to_bytes32().map_err(|_| {
-            D::Error::invalid_value(Unexpected::Bytes(&vec), &"exactly 32 base64 encoded bytes")
-        })
-    }
-}
-
-/// Holds all the types necessary to interact with the `Simulation` struct
-/// These public interface values do not hold "internal" types, and instead only use "basic" Rust
-/// types.
-pub mod args {
-    // TODO: can remove this??
-    use serde::{Deserialize, Serialize};
-    use std::convert::{TryFrom, TryInto};
-    use super::*;
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct CreateExecutionEnvironment {
-        pub ee: ExecutionEnvironment,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct CreateShardBlock {
-        pub shard_index: u64,
-        pub shard_block: ShardBlock,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct GetExecutionEnvironment {
-        pub ee_index: u64,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct GetExecutionEnvironmentState {
-        pub ee_index: u64,
-        pub shard_index: u64,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct GetShardBlock {
-        pub shard_index: u64,
-        pub shard_slot_index: u64,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct GetShardState {
-        pub shard_index: u64,
-    }
-
-    /// Defines custom serialization for basic return types
-    /// If serialization is required, appropriate basic types returned from the Simulation can be
-    /// wrapped in the appropriate enum entry to tell Serde how to custom-serialize the type.
-    // TODO(gregt): rename this enum
-    #[derive(Serialize, Deserialize)]
-    #[serde(untagged)]
-    pub enum CustomSerializedReturnTypes {
-        #[serde(with = "super::base64_arr")]
-        Base64EncodedRoot([u8; 32]),
-    }
-
-    // Interface structs
-
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct ExecutionEnvironment {
-        #[serde(with = "super::base64_arr")]
-        pub initial_state: [u8; 32],
-
-        #[serde(with = "super::base64_vec")]
-        pub wasm_code: Vec<u8>,
-    }
-    #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-    pub struct ShardTransaction {
-        pub data: Vec<u8>,
-        pub ee_index: u64,
-    }
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct ShardBlock {
-        pub transactions: Vec<ShardTransaction>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct ShardState {
-        #[serde(serialize_with = "super::vec_base64_arrs::serialize")]
-        pub execution_environment_states: Vec<[u8; 32]>,
-    }
-
-    // Conversions to/from interface structs <--> internal structs
-
-    impl<T: EthSpec> From<super::ExecutionEnvironment<T>> for ExecutionEnvironment {
-        fn from(value: super::ExecutionEnvironment<T>) -> Self {
-            let initial_state: [u8; 32] = value.initial_state.into();
-            let wasm_code: Vec<u8> = value.wasm_code.into();
-            Self {
-                initial_state,
-                wasm_code,
-            }
-        }
-    }
-    impl<T: EthSpec> TryFrom<ExecutionEnvironment> for super::ExecutionEnvironment<T> {
-        type Error = crate::Error;
-        fn try_from(value: ExecutionEnvironment) -> Result<Self, Self::Error> {
-            let initial_state: super::Root = Root::from(value.initial_state);
-            // TODO(gregt): Switch this to wrap the underlying error
-            let wasm_code = VariableList::new(value.wasm_code).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("wasm_code"),
-            })?;
-
-            Ok(Self {
-                initial_state,
-                wasm_code,
-            })
-        }
-    }
-
-    impl From<super::ShardTransaction> for ShardTransaction {
-        fn from(value: super::ShardTransaction) -> Self {
-            let data: Vec<u8> = value.data.into();
-            let ee_index: u64 = value.ee_index.into();
-            Self {
-                data,
-                ee_index,
-            }
-        }
-    }
-    impl TryFrom<ShardTransaction> for super::ShardTransaction {
-        type Error = crate::Error;
-        fn try_from(value: ShardTransaction) -> Result<Self, Self::Error> {
-            let ee_index = value.ee_index.into();
-            // TODO(gregt): Switch this to wrap the underlying error
-            let data = VariableList::new(value.data).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("data"),
-            })?;
-            Ok(Self {
-                data,
-                ee_index,
-            })
-        }
-    }
-
-    impl<T: EthSpec> From<super::ShardBlock<T>> for ShardBlock {
-        fn from(value: super::ShardBlock<T>) -> Self {
-            let transactions: Vec<ShardTransaction> = value.transactions.into_iter().map(|t| -> ShardTransaction {
-                t.clone().into()
-            }).collect();
-            Self {
-                transactions,
-            }
-        }
-    }
-    impl<T: EthSpec> TryFrom<ShardBlock> for super::ShardBlock<T> {
-        type Error = crate::Error;
-        fn try_from(value: ShardBlock) -> Result<Self, Self::Error> {
-            let mut transactions: Vec<super::ShardTransaction> = Vec::new();
-            for t in value.transactions.into_iter() {
-                let transaction = t.try_into()?;
-                transactions.push(transaction);
-            }
-            // TODO(gregt): Switch this to wrap the underlying error
-            let transactions = VariableList::new(transactions).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("transactions per shard block"),
-            })?;
-            Ok(Self {
-                transactions,
-            })
-        }
-    }
-
-    impl<T: EthSpec> From<super::ShardState<T>> for ShardState {
-        fn from(value: super::ShardState<T>) -> Self {
-            let execution_environment_states: Vec<[u8; 32]> = value.execution_environment_states.into_iter().map(|t| -> [u8; 32] {
-                t.0
-            }).collect();
-            Self {
-                execution_environment_states,
-            }
-        }
-    }
-    impl<T: EthSpec> TryFrom<ShardState> for super::ShardState<T> {
-        type Error = crate::Error;
-        fn try_from(value: ShardState) -> Result<Self, Self::Error> {
-            let execution_environment_states: Vec<super::Root>  = value.execution_environment_states.into_iter().map(|t| -> Root {
-                Root::from(t)
-            }).collect();
-            // TODO(gregt): Switch this to wrap the underlying error
-            let execution_environment_states = VariableList::new(execution_environment_states).map_err(|_| Error::MaxLengthExceeded {
-                what: format!("execution environment states"),
-            })?;
-            Ok(Self {
-                execution_environment_states,
-            })
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -536,19 +277,19 @@ mod tests {
         let example_wasm_code: &[u8] = include_bytes!("../tests/do_nothing.wasm");
         let example_wasm_code2: &[u8] = include_bytes!("../tests/phase2_bazaar.wasm");
 
-        let interface_ee = args::ExecutionEnvironment {
+        let interface_ee = simulation_args::ExecutionEnvironment {
             initial_state,
             wasm_code: example_wasm_code.to_vec(),
         };
-        let create_ee_args = args::CreateExecutionEnvironment {
+        let create_ee_args = simulation_args::CreateExecutionEnvironment {
             ee: interface_ee,
         };
 
-        let interface_ee2 = args::ExecutionEnvironment {
+        let interface_ee2 = simulation_args::ExecutionEnvironment {
             initial_state: initial_state.clone(),
             wasm_code: example_wasm_code2.to_vec(),
         };
-        let create_ee_args2 = args::CreateExecutionEnvironment {
+        let create_ee_args2 = simulation_args::CreateExecutionEnvironment {
             ee: interface_ee2,
         };
 
@@ -562,11 +303,11 @@ mod tests {
             .unwrap();
         assert_eq!(ee_index2, 1);
 
-        // Set up args::GetExecutionEnvironment
-        let get_ee_args = args::GetExecutionEnvironment {
+        // Set up simulation_args::GetExecutionEnvironment
+        let get_ee_args = simulation_args::GetExecutionEnvironment {
             ee_index,
         };
-        let get_ee_args2 = args::GetExecutionEnvironment {
+        let get_ee_args2 = simulation_args::GetExecutionEnvironment {
             ee_index: ee_index2,
         };
 
@@ -579,7 +320,7 @@ mod tests {
         // Make sure the EEs have the correct initial_state specified for every shard
         let max_shards = <MainnetEthSpec as EthSpec>::MaxShards::to_usize();
         for i in 0..max_shards as u64 {
-            let get_ee_state_args = args::GetExecutionEnvironmentState {
+            let get_ee_state_args = simulation_args::GetExecutionEnvironmentState {
                 ee_index,
                 shard_index: i,
             };
@@ -598,18 +339,18 @@ mod tests {
         shard_index: u64,
     ) -> (
         Simulation<MainnetEthSpec>,
-        args::ShardTransaction,
+        simulation_args::ShardTransaction,
         ShardSlot,
         EeIndex,
     ) {
         let mut simulation: Simulation<MainnetEthSpec> = Simulation::new();
 
         // Create EE with the specified code and initial state
-        let ee = args::ExecutionEnvironment {
+        let ee = simulation_args::ExecutionEnvironment {
             initial_state,
             wasm_code: wasm_code.to_vec(),
         };
-        let create_ee_args = args::CreateExecutionEnvironment {
+        let create_ee_args = simulation_args::CreateExecutionEnvironment {
             ee,
         };
         let ee_index = simulation
@@ -618,17 +359,17 @@ mod tests {
         assert_eq!(ee_index, 0);
 
         // Set up a shard transaction with the specified data
-        let shard_transaction = args::ShardTransaction {
+        let shard_transaction = simulation_args::ShardTransaction {
             data,
             ee_index,
         };
         let shard_transaction_copy = shard_transaction.clone();
 
         // Create a shard block with the one transaction in it
-        let shard_block = args::ShardBlock {
+        let shard_block = simulation_args::ShardBlock {
             transactions: vec![shard_transaction],
         };
-        let create_shard_block_args = args::CreateShardBlock {
+        let create_shard_block_args = simulation_args::CreateShardBlock {
             shard_index,
             shard_block,
         };
@@ -638,7 +379,7 @@ mod tests {
             .unwrap();
 
         // Get back the EE state to make sure it matches the expected_post_state
-        let get_ee_state_args = args::GetExecutionEnvironmentState { ee_index, shard_index };
+        let get_ee_state_args = simulation_args::GetExecutionEnvironmentState { ee_index, shard_index };
         let ee_post_state = simulation
             .get_execution_environment_state(get_ee_state_args)
             .unwrap();
@@ -669,7 +410,7 @@ mod tests {
 
         // Test that GetShardBlock is working as expected
         let shard_slot_index: u64 = shard_slot.into();
-        let get_shard_block_args = args::GetShardBlock { shard_index, shard_slot_index };
+        let get_shard_block_args = simulation_args::GetShardBlock { shard_index, shard_slot_index };
         let shard_block = simulation.get_shard_block(get_shard_block_args).unwrap();
 
         // Make sure the transaction on the retrieved block matches the transaction
@@ -680,7 +421,7 @@ mod tests {
         );
 
         // Test that GetShardState is working as expected
-        let get_shard_state_args = args::GetShardState { shard_index };
+        let get_shard_state_args = simulation_args::GetShardState { shard_index };
         let shard_state = simulation.get_shard_state(get_shard_state_args).unwrap();
         let ee_index = ee_index as usize;
         let ee_state = shard_state
@@ -691,6 +432,8 @@ mod tests {
     }
     #[test]
     fn run_scout_bazaar_test() {
+        use simulation_args::ToBytes32;
+
         let initial_state = "22ea9b045f8792170b45ec629c98e1b92bc6a19cd8d0e9f37baaadf2564142f4";
         let initial_state = Vec::from_hex(initial_state).unwrap().to_bytes32().unwrap();
         let expected_post_state = "29505fd952857b5766c759bcb4af58eb8df5a91043540c1398dd987a503127fc";

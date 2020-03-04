@@ -113,6 +113,7 @@ pub struct ShardState {
     pub execution_environment_states: Vec<[u8; 32]>,
 }
 
+
 // Conversions to/from interface structs <--> internal structs
 
 impl<T: internal_types::EthSpec> From<internal_types::ExecutionEnvironment<T>> for ExecutionEnvironment {
@@ -222,7 +223,7 @@ impl<T: internal_types::EthSpec> TryFrom<ShardState> for internal_types::ShardSt
 
 // Serialization helpers
 
-trait ToBytes32 {
+pub trait ToBytes32 {
     fn to_bytes32(&self) -> Result<[u8; 32]>;
 }
 
@@ -254,7 +255,6 @@ mod vec_base64_arrs {
     }
 }
 
-// TODO(gregt): Clean this up and move to separate package
 mod base64_vec {
     use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
     use serde::Serializer;

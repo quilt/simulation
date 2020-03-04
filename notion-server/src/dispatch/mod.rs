@@ -1,5 +1,5 @@
 use eth2_types::eth_spec::EthSpec;
-pub use simulation::{args, Error as SimulationError, Simulation};
+pub use simulation::{Error as SimulationError, Simulation};
 pub use simulation_args;
 use snafu::{OptionExt, ResultExt, Snafu};
 use tokio::sync::mpsc::{channel, Receiver, Sender};

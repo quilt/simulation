@@ -1,4 +1,4 @@
-use crate::dispatch::{args, Handle, Result as DispatchResult, simulation_args};
+use crate::dispatch::{Handle, Result as DispatchResult, simulation_args};
 use crate::Notion;
 
 use rocket::response::status;
