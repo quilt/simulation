@@ -7,7 +7,7 @@ use ssz_types::VariableList;
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, DeriveDecode, DeriveEncode)]
 pub struct ShardBlock<T>
 where
-    T: EthSpec
+    T: EthSpec,
 {
     pub transactions: VariableList<ShardTransaction, T::MaxTransactionsPerBlock>,
 }

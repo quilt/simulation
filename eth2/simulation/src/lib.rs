@@ -30,12 +30,20 @@ impl fmt::Display for WhatBound {
 /// Errors arising from the simulation.
 #[derive(Debug, Snafu)]
 pub enum Error {
-    ArgsError { backtrace: Backtrace, source: SimulationArgsError },
+    ArgsError {
+        backtrace: Backtrace,
+        source: SimulationArgsError,
+    },
     InvalidBytes32,
     #[snafu(display("{} exceeds max allowable length", what))]
-    MaxLengthExceeded { what: String },
+    MaxLengthExceeded {
+        what: String,
+    },
     #[snafu(display("no {} exists at index: {}", what, index))]
-    OutOfBounds { what: WhatBound, index: usize },
+    OutOfBounds {
+        what: WhatBound,
+        index: usize,
+    },
 }
 
-pub use crate::simulation::{Simulation};
+pub use crate::simulation::Simulation;

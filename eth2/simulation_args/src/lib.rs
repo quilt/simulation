@@ -2,9 +2,9 @@
 /// These public interface values do not hold "internal" types, and instead only use "basic" Rust
 /// types.
 use serde::{Deserialize, Serialize};
+use snafu::Snafu;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
-use snafu::Snafu;
 
 mod internal_types {
     pub use ssz_types::VariableList;
@@ -42,9 +42,14 @@ impl fmt::Display for WhatBound {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("{} exceeds max allowable length", what))]
-    MaxLengthExceeded { what: String },
+    MaxLengthExceeded {
+        what: String,
+    },
     #[snafu(display("no {} exists at index: {}", what, index))]
-    OutOfBounds { what: WhatBound, index: usize },
+    OutOfBounds {
+        what: WhatBound,
+        index: usize,
+    },
     InvalidBytes32,
 }
 
@@ -113,10 +118,11 @@ pub struct ShardState {
     pub execution_environment_states: Vec<[u8; 32]>,
 }
 
-
 // Conversions to/from interface structs <--> internal structs
 
-impl<T: internal_types::EthSpec> From<internal_types::ExecutionEnvironment<T>> for ExecutionEnvironment {
+impl<T: internal_types::EthSpec> From<internal_types::ExecutionEnvironment<T>>
+    for ExecutionEnvironment
+{
     fn from(value: internal_types::ExecutionEnvironment<T>) -> Self {
         let initial_state: [u8; 32] = value.initial_state.into();
         let wasm_code: Vec<u8> = value.wasm_code.into();
@@ -126,13 +132,17 @@ impl<T: internal_types::EthSpec> From<internal_types::ExecutionEnvironment<T>> f
         }
     }
 }
-impl<T: internal_types::EthSpec> TryFrom<ExecutionEnvironment> for internal_types::ExecutionEnvironment<T> {
+impl<T: internal_types::EthSpec> TryFrom<ExecutionEnvironment>
+    for internal_types::ExecutionEnvironment<T>
+{
     type Error = crate::Error;
     fn try_from(value: ExecutionEnvironment) -> Result<Self, Self::Error> {
         let initial_state: internal_types::Root = internal_types::Root::from(value.initial_state);
         // TODO(gregt): Switch this to wrap the underlying error
-        let wasm_code = internal_types::VariableList::new(value.wasm_code).map_err(|_| Error::MaxLengthExceeded {
-            what: format!("wasm_code"),
+        let wasm_code = internal_types::VariableList::new(value.wasm_code).map_err(|_| {
+            Error::MaxLengthExceeded {
+                what: format!("wasm_code"),
+            }
         })?;
 
         Ok(Self {
@@ -146,10 +156,7 @@ impl From<internal_types::ShardTransaction> for ShardTransaction {
     fn from(value: internal_types::ShardTransaction) -> Self {
         let data: Vec<u8> = value.data.into();
         let ee_index: u64 = value.ee_index.into();
-        Self {
-            data,
-            ee_index,
-        }
+        Self { data, ee_index }
     }
 }
 impl TryFrom<ShardTransaction> for internal_types::ShardTransaction {
@@ -157,24 +164,23 @@ impl TryFrom<ShardTransaction> for internal_types::ShardTransaction {
     fn try_from(value: ShardTransaction) -> Result<Self, Self::Error> {
         let ee_index = value.ee_index.into();
         // TODO(gregt): Switch this to wrap the underlying error
-        let data = internal_types::VariableList::new(value.data).map_err(|_| Error::MaxLengthExceeded {
-            what: format!("data"),
+        let data = internal_types::VariableList::new(value.data).map_err(|_| {
+            Error::MaxLengthExceeded {
+                what: format!("data"),
+            }
         })?;
-        Ok(Self {
-            data,
-            ee_index,
-        })
+        Ok(Self { data, ee_index })
     }
 }
 
 impl<T: internal_types::EthSpec> From<internal_types::ShardBlock<T>> for ShardBlock {
     fn from(value: internal_types::ShardBlock<T>) -> Self {
-        let transactions: Vec<ShardTransaction> = value.transactions.into_iter().map(|t| -> ShardTransaction {
-            t.clone().into()
-        }).collect();
-        Self {
-            transactions,
-        }
+        let transactions: Vec<ShardTransaction> = value
+            .transactions
+            .into_iter()
+            .map(|t| -> ShardTransaction { t.clone().into() })
+            .collect();
+        Self { transactions }
     }
 }
 impl<T: internal_types::EthSpec> TryFrom<ShardBlock> for internal_types::ShardBlock<T> {
@@ -186,20 +192,22 @@ impl<T: internal_types::EthSpec> TryFrom<ShardBlock> for internal_types::ShardBl
             transactions.push(transaction);
         }
         // TODO(gregt): Switch this to wrap the underlying error
-        let transactions = internal_types::VariableList::new(transactions).map_err(|_| Error::MaxLengthExceeded {
-            what: format!("transactions per shard block"),
+        let transactions = internal_types::VariableList::new(transactions).map_err(|_| {
+            Error::MaxLengthExceeded {
+                what: format!("transactions per shard block"),
+            }
         })?;
-        Ok(Self {
-            transactions,
-        })
+        Ok(Self { transactions })
     }
 }
 
 impl<T: internal_types::EthSpec> From<internal_types::ShardState<T>> for ShardState {
     fn from(value: internal_types::ShardState<T>) -> Self {
-        let execution_environment_states: Vec<[u8; 32]> = value.execution_environment_states.into_iter().map(|t| -> [u8; 32] {
-            t.0
-        }).collect();
+        let execution_environment_states: Vec<[u8; 32]> = value
+            .execution_environment_states
+            .into_iter()
+            .map(|t| -> [u8; 32] { t.0 })
+            .collect();
         Self {
             execution_environment_states,
         }
@@ -208,13 +216,18 @@ impl<T: internal_types::EthSpec> From<internal_types::ShardState<T>> for ShardSt
 impl<T: internal_types::EthSpec> TryFrom<ShardState> for internal_types::ShardState<T> {
     type Error = crate::Error;
     fn try_from(value: ShardState) -> Result<Self, Self::Error> {
-        let execution_environment_states: Vec<internal_types::Root>  = value.execution_environment_states.into_iter().map(|t| -> internal_types::Root {
-            internal_types::Root::from(t)
-        }).collect();
+        let execution_environment_states: Vec<internal_types::Root> = value
+            .execution_environment_states
+            .into_iter()
+            .map(|t| -> internal_types::Root { internal_types::Root::from(t) })
+            .collect();
         // TODO(gregt): Switch this to wrap the underlying error
-        let execution_environment_states = internal_types::VariableList::new(execution_environment_states).map_err(|_| Error::MaxLengthExceeded {
-            what: format!("execution environment states"),
-        })?;
+        let execution_environment_states =
+            internal_types::VariableList::new(execution_environment_states).map_err(|_| {
+                Error::MaxLengthExceeded {
+                    what: format!("execution environment states"),
+                }
+            })?;
         Ok(Self {
             execution_environment_states,
         })
@@ -240,13 +253,13 @@ impl ToBytes32 for Vec<u8> {
 }
 
 mod vec_base64_arrs {
-    use serde::ser::{Serializer, SerializeSeq};
-    use serde::de::{Deserialize, Deserializer, Error, Unexpected};
     use super::ToBytes32;
+    use serde::de::{Deserialize, Deserializer, Error, Unexpected};
+    use serde::ser::{SerializeSeq, Serializer};
 
     pub fn serialize<S>(vec: &Vec<[u8; 32]>, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         let mut seq = serializer.serialize_seq(Some(vec.len()))?;
         for bytes_arr in vec {
@@ -257,23 +270,30 @@ mod vec_base64_arrs {
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<[u8; 32]>, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         // Convert to vector of strings first
         let string_vec: Vec<&str> = Vec::deserialize(deserializer)?;
 
         // Then attempt to convert to Vec<[u8; 32]>
-        let result_vec: Result<Vec<[u8; 32]>, D::Error> = string_vec.into_iter().map(|s| -> Result<[u8; 32], D::Error> {
-            // TODO: Some duplicated code between this deserialize and the deserialize methods below
-            // There's probably a better way to do this without repeating that logic.
-            let vec_u8 = base64::decode(s)
-                .map_err(|_| D::Error::invalid_value(Unexpected::Str(s), &"base64 encoded bytes"))?;
+        let result_vec: Result<Vec<[u8; 32]>, D::Error> = string_vec
+            .into_iter()
+            .map(|s| -> Result<[u8; 32], D::Error> {
+                // TODO: Some duplicated code between this deserialize and the deserialize methods below
+                // There's probably a better way to do this without repeating that logic.
+                let vec_u8 = base64::decode(s).map_err(|_| {
+                    D::Error::invalid_value(Unexpected::Str(s), &"base64 encoded bytes")
+                })?;
 
-            vec_u8.to_bytes32().map_err(|_| {
-                D::Error::invalid_value(Unexpected::Bytes(&vec_u8), &"exactly 32 base64 encoded bytes")
+                vec_u8.to_bytes32().map_err(|_| {
+                    D::Error::invalid_value(
+                        Unexpected::Bytes(&vec_u8),
+                        &"exactly 32 base64 encoded bytes",
+                    )
+                })
             })
-        }).collect();
+            .collect();
 
         result_vec
     }
@@ -284,17 +304,17 @@ mod base64_vec {
     use serde::Serializer;
 
     pub fn serialize<T, S>(bytes: T, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            T: AsRef<[u8]>,
-            S: Serializer,
+    where
+        T: AsRef<[u8]>,
+        S: Serializer,
     {
         let txt = base64::encode(bytes.as_ref());
         serializer.serialize_str(&txt)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let txt = String::deserialize(deserializer)?;
 
@@ -311,8 +331,8 @@ mod base64_arr {
     pub use super::base64_vec::serialize;
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let vec = super::base64_vec::deserialize(deserializer)?;
 

@@ -1,5 +1,5 @@
-use snafu::{Backtrace, Snafu};
 use reqwest::Error as ReqwestError;
+use snafu::{Backtrace, Snafu};
 use url::ParseError;
 
 mod client;
@@ -10,11 +10,16 @@ pub enum Error {
     Decode,
 
     #[snafu(display("error parsing http request"))]
-    Parse { backtrace: Backtrace, source: ParseError },
+    Parse {
+        backtrace: Backtrace,
+        source: ParseError,
+    },
 
     #[snafu(display("error in underlying reqwest library"))]
-    Reqwest { backtrace: Backtrace, source: ReqwestError },
-
+    Reqwest {
+        backtrace: Backtrace,
+        source: ReqwestError,
+    },
     // #[snafu(display("error with HTTP request"))]
     // HTTP,
 }

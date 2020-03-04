@@ -1,6 +1,6 @@
-use crate::dispatch::{Handle, Result as DispatchResult, simulation_args};
+use crate::dispatch::{simulation_args, Handle, Result as DispatchResult};
 use crate::Notion;
-use rocket::{config};
+use rocket::config;
 use rocket::{post, routes, State};
 use rocket_contrib::json::Json;
 use snafu::{ResultExt, Snafu};
@@ -26,12 +26,12 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
         .mount(
             "/",
             routes![
-               create_execution_environment,
-               create_shard_block,
-               get_execution_environment,
-               get_execution_environment_state,
-               get_shard_block,
-               get_shard_state,
+                create_execution_environment,
+                create_shard_block,
+                get_execution_environment,
+                get_execution_environment_state,
+                get_shard_block,
+                get_shard_state,
             ],
         )
         .manage(handle)
@@ -43,8 +43,8 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
 #[tokio::main]
 #[post("/create-execution-environment", data = "<args>")]
 async fn create_execution_environment(
-   args: Json<simulation_args::CreateExecutionEnvironment>,
-   handle: State<Handle>,
+    args: Json<simulation_args::CreateExecutionEnvironment>,
+    handle: State<Handle>,
 ) -> DispatchResult<Json<u64>> {
     let args = args.into_inner();
 
@@ -67,8 +67,8 @@ async fn create_shard_block(
 #[tokio::main]
 #[post("/get-execution-environment", data = "<args>")]
 async fn get_execution_environment(
-   args: Json<simulation_args::GetExecutionEnvironment>,
-   handle: State<Handle>,
+    args: Json<simulation_args::GetExecutionEnvironment>,
+    handle: State<Handle>,
 ) -> DispatchResult<Json<simulation_args::ExecutionEnvironment>> {
     let args = args.into_inner();
     let ee = handle.clone().get_execution_environment(args).await?;
@@ -83,7 +83,8 @@ async fn get_execution_environment_state(
 ) -> DispatchResult<Json<simulation_args::CustomSerializedReturnTypes>> {
     let args = args.into_inner();
     let ee_state_root = handle.clone().get_execution_environment_state(args).await?;
-    let encodeable_ee_state_root = simulation_args::CustomSerializedReturnTypes::Base64EncodedRoot(ee_state_root);
+    let encodeable_ee_state_root =
+        simulation_args::CustomSerializedReturnTypes::Base64EncodedRoot(ee_state_root);
     Ok(Json(encodeable_ee_state_root))
 }
 

@@ -112,22 +112,22 @@ impl<T: EthSpec> Notion<T> {
 
     #[tokio::main]
     async fn async_run(self) -> Result<()> {
-//        let simulation = ethereum::Simulation::new();
+        //        let simulation = ethereum::Simulation::new();
         let simulation: Simulation<T> = Simulation::new();
         let (dispatch, handle) = dispatch::Dispatch::new(simulation);
 
         let eth_run = tokio::spawn(dispatch.run().map(|x| x.context(error::Dispatch)));
         let api_run =
-           tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
+            tokio::task::spawn_blocking(move || api::run(&self, handle).context(error::Api));
 
         pin_mut!(eth_run);
         pin_mut!(api_run);
 
         future::try_select(eth_run, api_run)
-           .await
-           .unwrap()
-           .factor_first()
-           .0
+            .await
+            .unwrap()
+            .factor_first()
+            .0
     }
 }
 

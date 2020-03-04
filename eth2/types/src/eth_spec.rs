@@ -4,7 +4,7 @@
 use crate::beacon_state::BeaconState;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use typenum::{Unsigned, U64, U1024, U65536, U262144};
+use typenum::{Unsigned, U1024, U262144, U64, U65536};
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
