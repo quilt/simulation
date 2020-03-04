@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     // Create EE
     let ee = simulation_args::ExecutionEnvironment {
-        initial_state: [0; 32],
+        initial_state: [5; 32],
         wasm_code: Vec::new(),
     };
     let create_ee_args = simulation_args::CreateExecutionEnvironment {
@@ -25,6 +25,13 @@ async fn main() -> Result<()> {
     };
     let result = client.create_execution_environment(create_ee_args).await?;
     println!("created with index: {}", result);
+
+    // Get Shard State
+    let get_shard_state_args = simulation_args::GetShardState {
+        shard_index: 10,
+    };
+    let result = client.get_shard_state(get_shard_state_args).await?;
+    println!("Shard state debug: {:?}", result);
 
     Ok(())
 }
