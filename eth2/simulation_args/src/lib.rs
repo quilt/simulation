@@ -80,6 +80,7 @@ pub struct GetShardState {
 /// Defines custom serialization for basic return types
 /// If serialization is required, appropriate basic types returned from the Simulation can be
 /// wrapped in the appropriate enum entry to tell Serde how to custom-serialize the type.
+// TODO: Possibly there's a more elegant way to achieve this same result?
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CustomSerializedReturnTypes {
@@ -241,6 +242,9 @@ impl ToBytes32 for Vec<u8> {
 
 mod vec_base64_arrs {
     use serde::ser::{Serialize, Serializer, SerializeSeq};
+    use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor, Unexpected};
+    use std::fmt;
+    use super::ToBytes32;
 
     pub fn serialize<S>(vec: &Vec<[u8; 32]>, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -252,6 +256,28 @@ mod vec_base64_arrs {
             seq.serialize_element(&txt)?;
         }
         seq.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<[u8; 32]>, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        // Convert to vector of strings first
+        let string_vec: Vec<&str> = Vec::deserialize(deserializer)?;
+
+        // Then attempt to convert to Vec<[u8; 32]>
+        let result_vec: Result<Vec<[u8; 32]>, D::Error> = string_vec.into_iter().map(|s| -> Result<[u8; 32], D::Error> {
+            // TODO: Some duplicated code between this deserialize and the deserialize methods below
+            // There's probably a better way to do this without repeating that logic.
+            let vec_u8 = base64::decode(s)
+                .map_err(|_| D::Error::invalid_value(Unexpected::Str(s), &"base64 encoded bytes"))?;
+
+            vec_u8.to_bytes32().map_err(|_| {
+                D::Error::invalid_value(Unexpected::Bytes(&vec_u8), &"exactly 32 base64 encoded bytes")
+            })
+        }).collect();
+
+        result_vec
     }
 }
 

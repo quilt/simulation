@@ -7,6 +7,9 @@ mod client;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("unable to decode return value from server"))]
+    Decode,
+
     #[snafu(display("error parsing http request"))]
     Parse { backtrace: Backtrace, source: ParseError },
 
