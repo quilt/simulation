@@ -110,7 +110,7 @@ pub struct ShardBlock {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ShardState {
-    #[serde(serialize_with = "vec_base64_arrs::serialize")]
+    #[serde(with = "vec_base64_arrs")]
     pub execution_environment_states: Vec<[u8; 32]>,
 }
 
