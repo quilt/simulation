@@ -1,15 +1,20 @@
 use simulation_args;
-use snafu::Snafu;
+use snafu::{Backtrace, Snafu};
+use reqwest::Error as ReqwestError;
+use url::ParseError;
 
 mod client;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("error with HTTP request"))]
-    HTTPError,
+    #[snafu(display("error parsing http request"))]
+    Parse { backtrace: Backtrace, source: ParseError },
 
-    #[snafu(display("error in underlying simulation"))]
-    SimulationError,
+    #[snafu(display("error in underlying reqwest library"))]
+    Reqwest { backtrace: Backtrace, source: ReqwestError },
+
+    // #[snafu(display("error with HTTP request"))]
+    // HTTP,
 }
 
 /// Shorthand for result types returned by this library

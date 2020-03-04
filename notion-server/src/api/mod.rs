@@ -42,7 +42,7 @@ pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main] // TODO: Check efficiency of tokio::main. Does it create or reuse thread pools?
+#[tokio::main]
 #[post("/create-execution-environment", data = "<args>")]
 async fn create_execution_environment(
    args: Json<simulation_args::CreateExecutionEnvironment>,
