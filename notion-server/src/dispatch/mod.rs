@@ -23,14 +23,14 @@ pub enum Error {
 #[derive(Debug)]
 enum Operation {
     CreateExecutionEnvironment(simulation_args::CreateExecutionEnvironment, Sender<Result<u64>>),
-    CreateShardBlock(args::CreateShardBlock, Sender<Result<u64>>),
+    CreateShardBlock(simulation_args::CreateShardBlock, Sender<Result<u64>>),
     GetExecutionEnvironment(
-        args::GetExecutionEnvironment,
-        Sender<Result<args::ExecutionEnvironment>>,
+        simulation_args::GetExecutionEnvironment,
+        Sender<Result<simulation_args::ExecutionEnvironment>>,
     ),
-    GetExecutionEnvironmentState(args::GetExecutionEnvironmentState, Sender<Result<[u8; 32]>>),
-    GetShardBlock(args::GetShardBlock, Sender<Result<args::ShardBlock>>),
-    GetShardState(args::GetShardState, Sender<Result<args::ShardState>>),
+    GetExecutionEnvironmentState(simulation_args::GetExecutionEnvironmentState, Sender<Result<[u8; 32]>>),
+    GetShardBlock(simulation_args::GetShardBlock, Sender<Result<simulation_args::ShardBlock>>),
+    GetShardState(simulation_args::GetShardState, Sender<Result<simulation_args::ShardState>>),
 }
 
 #[derive(Debug)]
@@ -110,7 +110,7 @@ impl Handle {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn create_shard_block(&mut self, arg: args::CreateShardBlock) -> Result<u64> {
+    pub async fn create_shard_block(&mut self, arg: simulation_args::CreateShardBlock) -> Result<u64> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::CreateShardBlock(arg, sender)).await;
@@ -118,7 +118,7 @@ impl Handle {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_execution_environment(&mut self, arg: args::GetExecutionEnvironment) -> Result<args::ExecutionEnvironment> {
+    pub async fn get_execution_environment(&mut self, arg: simulation_args::GetExecutionEnvironment) -> Result<simulation_args::ExecutionEnvironment> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetExecutionEnvironment(arg, sender)).await;
@@ -126,7 +126,7 @@ impl Handle {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_execution_environment_state(&mut self, arg: args::GetExecutionEnvironmentState) -> Result<[u8; 32]> {
+    pub async fn get_execution_environment_state(&mut self, arg: simulation_args::GetExecutionEnvironmentState) -> Result<[u8; 32]> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetExecutionEnvironmentState(arg, sender)).await;
@@ -134,7 +134,7 @@ impl Handle {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_shard_block(&mut self, arg: args::GetShardBlock) -> Result<args::ShardBlock> {
+    pub async fn get_shard_block(&mut self, arg: simulation_args::GetShardBlock) -> Result<simulation_args::ShardBlock> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardBlock(arg, sender)).await;
@@ -142,7 +142,7 @@ impl Handle {
         receiver.recv().await.context(Terminated)?
     }
 
-    pub async fn get_shard_state(&mut self, arg: args::GetShardState) -> Result<args::ShardState> {
+    pub async fn get_shard_state(&mut self, arg: simulation_args::GetShardState) -> Result<simulation_args::ShardState> {
         let (sender, mut receiver) = channel(1);
 
         self.sender.send(Operation::GetShardState(arg, sender)).await;

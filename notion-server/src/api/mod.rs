@@ -58,7 +58,7 @@ async fn create_execution_environment(
 #[tokio::main]
 #[post("/create-shard-block", data = "<args>")]
 async fn create_shard_block(
-    args: Json<args::CreateShardBlock>,
+    args: Json<simulation_args::CreateShardBlock>,
     handle: State<Handle>,
 ) -> DispatchResult<Json<u64>> {
     let args = args.into_inner();
@@ -69,33 +69,32 @@ async fn create_shard_block(
 #[tokio::main]
 #[post("/get-execution-environment", data = "<args>")]
 async fn get_execution_environment(
-   args: Json<args::GetExecutionEnvironment>,
+   args: Json<simulation_args::GetExecutionEnvironment>,
    handle: State<Handle>,
-) -> DispatchResult<Json<args::ExecutionEnvironment>> {
+) -> DispatchResult<Json<simulation_args::ExecutionEnvironment>> {
     let args = args.into_inner();
     let ee = handle.clone().get_execution_environment(args).await?;
     Ok(Json(ee))
 }
 
-// TODO(gregt): Make it so we can pass [u8; 32] back "raw"
 #[tokio::main]
 #[post("/get-execution-environment-state", data = "<args>")]
 async fn get_execution_environment_state(
-    args: Json<args::GetExecutionEnvironmentState>,
+    args: Json<simulation_args::GetExecutionEnvironmentState>,
     handle: State<Handle>,
-) -> DispatchResult<Json<args::CustomSerializedReturnTypes>> {
+) -> DispatchResult<Json<simulation_args::CustomSerializedReturnTypes>> {
     let args = args.into_inner();
     let ee_state_root = handle.clone().get_execution_environment_state(args).await?;
-    let encodeable_ee_state_root = args::CustomSerializedReturnTypes::Base64EncodedRoot(ee_state_root);
+    let encodeable_ee_state_root = simulation_args::CustomSerializedReturnTypes::Base64EncodedRoot(ee_state_root);
     Ok(Json(encodeable_ee_state_root))
 }
 
 #[tokio::main]
 #[post("/get-shard-block", data = "<args>")]
 async fn get_shard_block(
-    args: Json<args::GetShardBlock>,
+    args: Json<simulation_args::GetShardBlock>,
     handle: State<Handle>,
-) -> DispatchResult<Json<args::ShardBlock>> {
+) -> DispatchResult<Json<simulation_args::ShardBlock>> {
     let args = args.into_inner();
     let shard_block = handle.clone().get_shard_block(args).await?;
     Ok(Json(shard_block))
@@ -104,9 +103,9 @@ async fn get_shard_block(
 #[tokio::main]
 #[post("/get-shard-state", data = "<args>")]
 async fn get_shard_state(
-    args: Json<args::GetShardState>,
+    args: Json<simulation_args::GetShardState>,
     handle: State<Handle>,
-) -> DispatchResult<Json<args::ShardState>> {
+) -> DispatchResult<Json<simulation_args::ShardState>> {
     let args = args.into_inner();
     let shard_state = handle.clone().get_shard_state(args).await?;
     Ok(Json(shard_state))

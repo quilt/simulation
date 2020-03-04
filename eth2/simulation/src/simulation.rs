@@ -70,7 +70,7 @@ impl<T: EthSpec> Simulation<T> {
 
     /// Add a new shard block containing a list of transactions that need to be executed
     /// Execute all transactions on the appropriate shards / EEs, return ShardBlock index
-    pub fn create_shard_block(&mut self, a: args::CreateShardBlock) -> Result<u64> {
+    pub fn create_shard_block(&mut self, a: simulation_args::CreateShardBlock) -> Result<u64> {
         // Get the specified ShardState (if it exists)
         let shard_index = a.shard_index as usize;
         let shard = Shard::new(a.shard_index);
@@ -85,7 +85,9 @@ impl<T: EthSpec> Simulation<T> {
             })?;
 
         // Create the internal shard block from args
-        let shard_block: ShardBlock<T> = ShardBlock::try_from(a.shard_block)?;
+        let shard_block: ShardBlock<T> = ShardBlock::try_from(a.shard_block).context(
+            ArgsError,
+        )?;;
 
         // Execute transactions and update shard state for all transactions
         for transaction in shard_block.transactions.iter() {
@@ -140,8 +142,8 @@ impl<T: EthSpec> Simulation<T> {
     /// Get an EE that was previously added
     pub fn get_execution_environment(
         &self,
-        a: args::GetExecutionEnvironment,
-    ) -> Result<args::ExecutionEnvironment> {
+        a: simulation_args::GetExecutionEnvironment,
+    ) -> Result<simulation_args::ExecutionEnvironment> {
         let ee_index= a.ee_index as usize;
         let ee = self
             .store
@@ -158,7 +160,7 @@ impl<T: EthSpec> Simulation<T> {
     /// Get the current state of an execution environment on a shard
     pub fn get_execution_environment_state(
         &self,
-        a: args::GetExecutionEnvironmentState,
+        a: simulation_args::GetExecutionEnvironmentState,
     ) -> Result<[u8; 32]> {
         let ee_index = a.ee_index as usize;
         let shard_index = a.shard_index as usize;
@@ -182,7 +184,7 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get a shard block that was previously added
-    pub fn get_shard_block(&self, a: args::GetShardBlock) -> Result<args::ShardBlock> {
+    pub fn get_shard_block(&self, a: simulation_args::GetShardBlock) -> Result<simulation_args::ShardBlock> {
         let shard_index = a.shard_index as usize;
         let shard_slot_index = a.shard_slot_index as usize;
         let shard = Shard::new(a.shard_index);
@@ -202,7 +204,7 @@ impl<T: EthSpec> Simulation<T> {
     }
 
     /// Get the specified ShardState, will contain EE states
-    pub fn get_shard_state(&self, a: args::GetShardState) -> Result<args::ShardState> {
+    pub fn get_shard_state(&self, a: simulation_args::GetShardState) -> Result<simulation_args::ShardState> {
         let shard_index = a.shard_index as usize;
         let shard_state = self
             .store
@@ -334,6 +336,7 @@ pub mod args {
     /// Defines custom serialization for basic return types
     /// If serialization is required, appropriate basic types returned from the Simulation can be
     /// wrapped in the appropriate enum entry to tell Serde how to custom-serialize the type.
+    // TODO(gregt): rename this enum
     #[derive(Serialize, Deserialize)]
     #[serde(untagged)]
     pub enum CustomSerializedReturnTypes {
