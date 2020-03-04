@@ -1,9 +1,7 @@
 use crate::dispatch::{Handle, Result as DispatchResult, simulation_args};
 use crate::Notion;
-
-use rocket::response::status;
-use rocket::{config, uri};
-use rocket::{get, post, routes, State};
+use rocket::{config};
+use rocket::{post, routes, State};
 use rocket_contrib::json::Json;
 use snafu::{ResultExt, Snafu};
 use types::eth_spec::EthSpec;

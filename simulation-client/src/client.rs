@@ -1,6 +1,5 @@
-use crate::{Error, Result, Parse, Reqwest};
+use crate::{Result, Parse, Reqwest};
 use reqwest::Client as HttpClient;
-use serde::ser::Serialize;
 use snafu::{ResultExt};
 use url::Url;
 
@@ -65,11 +64,8 @@ impl SimulationClient {
             .json::<simulation_args::CustomSerializedReturnTypes>()
             .await.context(Reqwest)?;
 
-        if let simulation_args::CustomSerializedReturnTypes::Base64EncodedRoot(root) = res {
-            Ok(root)
-        } else {
-            Err(Error::Decode)
-        }
+        let simulation_args::CustomSerializedReturnTypes::Base64EncodedRoot(root) = res;
+        Ok(root)
     }
     pub async fn get_shard_block(&self, a: simulation_args::GetShardBlock) -> Result<simulation_args::ShardBlock> {
         let url = self.base_url.join("/get-shard-block").context(Parse)?;

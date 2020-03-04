@@ -1,3 +1,4 @@
+// TODO: Rename this to "simulation-server"
 //! `notion-server` is a server that simulates Ethereum 2.0's second phase,
 //! with a particular focus on evaluating execution environments.
 
@@ -6,7 +7,6 @@
 #![warn(missing_debug_implementations)]
 
 mod api;
-//mod ethereum;
 mod dispatch;
 
 use futures_util::future::{self, FutureExt};
@@ -32,6 +32,7 @@ mod error {
 
         /// Errors returned by the Dispatch logic
         Dispatch {
+            /// The underlying error as returned by the dispatch mod
             source: dispatch::Error,
         },
 

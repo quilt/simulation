@@ -4,13 +4,10 @@ use ewasm::{Execute, RootRuntime};
 use simulation_args;
 use snafu::ResultExt;
 use std::convert::TryFrom;
-use ssz_types::VariableList;
 use types::eth_spec::EthSpec;
 use types::execution_environment::ExecutionEnvironment;
 use types::shard_block::ShardBlock;
-use types::shard_state::ShardState;
-use types::shard_transaction::ShardTransaction;
-use types::slot_epoch_root::{EeIndex, Root, Shard, ShardSlot};
+use types::slot_epoch_root::{Root, Shard};
 
 #[derive(Debug)]
 pub struct Simulation<T>
@@ -87,7 +84,7 @@ impl<T: EthSpec> Simulation<T> {
         // Create the internal shard block from args
         let shard_block: ShardBlock<T> = ShardBlock::try_from(a.shard_block).context(
             ArgsError,
-        )?;;
+        )?;
 
         // Execute transactions and update shard state for all transactions
         for transaction in shard_block.transactions.iter() {

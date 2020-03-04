@@ -1,7 +1,6 @@
 /// Holds all the types necessary to interact with the `Simulation` struct
 /// These public interface values do not hold "internal" types, and instead only use "basic" Rust
 /// types.
-use base64;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -241,9 +240,8 @@ impl ToBytes32 for Vec<u8> {
 }
 
 mod vec_base64_arrs {
-    use serde::ser::{Serialize, Serializer, SerializeSeq};
-    use serde::de::{Deserialize, Deserializer, Error, SeqAccess, Visitor, Unexpected};
-    use std::fmt;
+    use serde::ser::{Serializer, SerializeSeq};
+    use serde::de::{Deserialize, Deserializer, Error, Unexpected};
     use super::ToBytes32;
 
     pub fn serialize<S>(vec: &Vec<[u8; 32]>, serializer: S) -> Result<S::Ok, S::Error>
@@ -306,8 +304,7 @@ mod base64_vec {
 }
 
 mod base64_arr {
-    use serde::de::{Deserialize, Deserializer, Error as _, Unexpected};
-    use serde::Serializer;
+    use serde::de::{Deserializer, Error as _, Unexpected};
 
     use super::ToBytes32;
 
