@@ -1,5 +1,5 @@
 [package]
-name = "simulation-server"
+name = "simulation_server"
 version = "0.1.0"
 authors = [
     "Ansgar Dietrichs <ansgar.dietrichs@consensys.net>",

@@ -1,5 +1,5 @@
 [package]
-name = "simulation-client"
+name = "simulation_client_example"
 version = "0.1.0"
 authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
 edition = "2018"
@@ -7,11 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.10", features = ["json"] }
-tokio = { version = "0.2", features = ["full"] }
-serde = "1.0"
-serde_json = "1.0"
+hex = "0.4.0"
 simulation_args = { path = "../eth2/simulation_args" }
-snafu = "0.6.0"
+simulation_client = { path = "../simulation_client" }
 structopt = "0.3.4"
+tokio = { version = "0.2", features = ["full"] }
 url = "2.1.1"

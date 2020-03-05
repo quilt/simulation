@@ -5,6 +5,7 @@ members = [
     "eth2/utils/ssz_types",
     "eth2/simulation",
     "eth2/simulation_args",
-    'simulation-server',
-    'simulation-client',
+    'simulation_server',
+    'simulation_client',
+    'simulation_client_example',
 ]

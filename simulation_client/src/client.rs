@@ -5,7 +5,7 @@ use url::Url;
 
 #[derive(Debug)]
 pub struct SimulationClient {
-    /// IP address and port of simulation-server for sending API requests.
+    /// IP address and port of simulation_server for sending API requests.
     base_url: Url,
     http_client: HttpClient,
 }

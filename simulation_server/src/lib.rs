@@ -1,4 +1,4 @@
-//! `simulation-server` is a server that simulates Ethereum 2.0's second phase,
+//! `simulation_server` is a server that simulates Ethereum 2.0's second phase,
 //! with a particular focus on evaluating execution environments.
 
 #![feature(proc_macro_hygiene, decl_macro)]
