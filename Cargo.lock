@@ -1528,6 +1528,7 @@ dependencies = [
  "serde_derive 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_hex 0.1.0",
  "serde_yaml 0.8.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tree_hash 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tree_hash_derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",

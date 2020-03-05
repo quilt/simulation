@@ -1,4 +1,3 @@
-// TODO: Rename this to "simulation-server"
 //! `simulation-server` is a server that simulates Ethereum 2.0's second phase,
 //! with a particular focus on evaluating execution environments.
 

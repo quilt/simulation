@@ -2,12 +2,12 @@
 /// These public interface values do not hold "internal" types, and instead only use "basic" Rust
 /// types.
 use serde::{Deserialize, Serialize};
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 mod internal_types {
-    pub use ssz_types::VariableList;
+    pub use ssz_types::{Error, VariableList};
     pub use types::eth_spec::EthSpec;
     pub use types::execution_environment::ExecutionEnvironment;
     pub use types::shard_block::ShardBlock;
@@ -44,6 +44,10 @@ pub enum Error {
     #[snafu(display("{} exceeds max allowable length", what))]
     MaxLengthExceeded {
         what: String,
+    },
+    #[snafu(display("error in internal ssz types library"))]
+    SszTypesError {
+        source: internal_types::Error,
     },
     #[snafu(display("no {} exists at index: {}", what, index))]
     OutOfBounds {
@@ -138,12 +142,7 @@ impl<T: internal_types::EthSpec> TryFrom<ExecutionEnvironment>
     type Error = crate::Error;
     fn try_from(value: ExecutionEnvironment) -> Result<Self, Self::Error> {
         let initial_state: internal_types::Root = internal_types::Root::from(value.initial_state);
-        // TODO(gregt): Switch this to wrap the underlying error
-        let wasm_code = internal_types::VariableList::new(value.wasm_code).map_err(|_| {
-            Error::MaxLengthExceeded {
-                what: format!("wasm_code"),
-            }
-        })?;
+        let wasm_code = internal_types::VariableList::new(value.wasm_code).context(SszTypesError)?;
 
         Ok(Self {
             initial_state,
@@ -163,12 +162,7 @@ impl TryFrom<ShardTransaction> for internal_types::ShardTransaction {
     type Error = crate::Error;
     fn try_from(value: ShardTransaction) -> Result<Self, Self::Error> {
         let ee_index = value.ee_index.into();
-        // TODO(gregt): Switch this to wrap the underlying error
-        let data = internal_types::VariableList::new(value.data).map_err(|_| {
-            Error::MaxLengthExceeded {
-                what: format!("data"),
-            }
-        })?;
+        let data = internal_types::VariableList::new(value.data).context(SszTypesError)?;
         Ok(Self { data, ee_index })
     }
 }
@@ -191,12 +185,7 @@ impl<T: internal_types::EthSpec> TryFrom<ShardBlock> for internal_types::ShardBl
             let transaction = t.try_into()?;
             transactions.push(transaction);
         }
-        // TODO(gregt): Switch this to wrap the underlying error
-        let transactions = internal_types::VariableList::new(transactions).map_err(|_| {
-            Error::MaxLengthExceeded {
-                what: format!("transactions per shard block"),
-            }
-        })?;
+        let transactions = internal_types::VariableList::new(transactions).context(SszTypesError)?;
         Ok(Self { transactions })
     }
 }
@@ -221,13 +210,8 @@ impl<T: internal_types::EthSpec> TryFrom<ShardState> for internal_types::ShardSt
             .into_iter()
             .map(|t| -> internal_types::Root { internal_types::Root::from(t) })
             .collect();
-        // TODO(gregt): Switch this to wrap the underlying error
         let execution_environment_states =
-            internal_types::VariableList::new(execution_environment_states).map_err(|_| {
-                Error::MaxLengthExceeded {
-                    what: format!("execution environment states"),
-                }
-            })?;
+            internal_types::VariableList::new(execution_environment_states).context(SszTypesError)?;
         Ok(Self {
             execution_environment_states,
         })
