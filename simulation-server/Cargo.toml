@@ -1,5 +1,5 @@
 [package]
-name = "notion-server"
+name = "simulation-server"
 version = "0.1.0"
 authors = [
     "Ansgar Dietrichs <ansgar.dietrichs@consensys.net>",

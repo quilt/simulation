@@ -862,29 +862,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "notion-cli"
-version = "0.1.0"
-
-[[package]]
-name = "notion-server"
-version = "0.1.0"
-dependencies = [
- "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ewasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures-util 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
- "simulation 0.1.0",
- "simulation_args 0.1.0",
- "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "types 0.1.0",
-]
-
-[[package]]
 name = "num-bigint"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,6 +1429,25 @@ dependencies = [
  "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "simulation-server"
+version = "0.1.0"
+dependencies = [
+ "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ewasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures-util 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simulation 0.1.0",
+ "simulation_args 0.1.0",
+ "snafu 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
 ]
 
 [[package]]

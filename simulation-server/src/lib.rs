@@ -1,5 +1,5 @@
 // TODO: Rename this to "simulation-server"
-//! `notion-server` is a server that simulates Ethereum 2.0's second phase,
+//! `simulation-server` is a server that simulates Ethereum 2.0's second phase,
 //! with a particular focus on evaluating execution environments.
 
 #![feature(proc_macro_hygiene, decl_macro)]
@@ -52,22 +52,22 @@ pub use error::Error;
 /// Shorthand type for results with this crate's error type.
 pub type Result<V, E = Error> = std::result::Result<V, E>;
 
-/// Configuration options for starting a `Notion` server instance.
+/// Configuration options for starting a `SimulationServer` instance.
 #[derive(Debug, Clone)]
-pub struct NotionBuilder<T: EthSpec> {
+pub struct SimulationServerBuilder<T: EthSpec> {
     bind: SocketAddr,
     // #PhantomDataExplanation
-    // Required to be able to write NotionBuilder<T: EthSpec> without actually
-    // using the T value anywhere in the NotionBuilder implementation, which is
+    // Required to be able to write SimulationServerBuilder<T: EthSpec> without actually
+    // using the T value anywhere in the SimulationServerBuilder implementation, which is
     // in turn required because we want to be able to specify Simulation<T> in the
-    // initialization of Notion and NotionBuilder
+    // initialization of SimulationServer and SimulationServerBuilder
     phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> NotionBuilder<T> {
-    /// Create a new `Notion` instance from the configuration in this builder.
-    pub fn build(self) -> Notion<T> {
-        Notion {
+impl<T: EthSpec> SimulationServerBuilder<T> {
+    /// Create a new `SimulationServer` instance from the configuration in this builder.
+    pub fn build(self) -> SimulationServer<T> {
+        SimulationServer {
             bind: self.bind,
             phantom: PhantomData,
         }
@@ -82,9 +82,9 @@ impl<T: EthSpec> NotionBuilder<T> {
     }
 }
 
-impl<T: EthSpec> Default for NotionBuilder<T> {
+impl<T: EthSpec> Default for SimulationServerBuilder<T> {
     fn default() -> Self {
-        NotionBuilder {
+        SimulationServerBuilder {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
             phantom: PhantomData,
         }
@@ -93,16 +93,16 @@ impl<T: EthSpec> Default for NotionBuilder<T> {
 
 /// An HTTP/JSON server wrapper around eth2::simulation::Simulation
 #[derive(Debug)]
-pub struct Notion<T: EthSpec> {
+pub struct SimulationServer<T: EthSpec> {
     bind: SocketAddr,
     // See #PhantomDataExplanation
     phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> Notion<T> {
-    /// Create a builder for a `Notion` server.
-    pub fn builder() -> NotionBuilder<T> {
-        NotionBuilder::default()
+impl<T: EthSpec> SimulationServer<T> {
+    /// Create a builder for a `SimulationServer`.
+    pub fn builder() -> SimulationServerBuilder<T> {
+        SimulationServerBuilder::default()
     }
 
     /// Start the simulation server and wait for it to finish.

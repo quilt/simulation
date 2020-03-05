@@ -1,5 +1,5 @@
 use crate::dispatch::{simulation_args, Handle, Result as DispatchResult};
-use crate::Notion;
+use crate::{SimulationServer};
 use rocket::config;
 use rocket::{post, routes, State};
 use rocket_contrib::json::Json;
@@ -15,10 +15,10 @@ pub enum Error {
     Config { source: config::ConfigError },
 }
 
-pub fn run<T: EthSpec>(notion: &Notion<T>, handle: Handle) -> Result<()> {
+pub fn run<T: EthSpec>(simulation_server: &SimulationServer<T>, handle: Handle) -> Result<()> {
     let config = config::Config::build(config::Environment::Development)
-        .address(format!("{}", notion.bind.ip()))
-        .port(notion.bind.port())
+        .address(format!("{}", simulation_server.bind.ip()))
+        .port(simulation_server.bind.port())
         .finalize()
         .context(Config)?;
 
