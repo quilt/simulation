@@ -244,7 +244,7 @@ macro_rules! impl_ssz {
             }
 
             fn tree_hash_root(&self) -> Vec<u8> {
-                int_to_bytes::int_to_bytes32(self.0)
+                quilt_sim_proof_of_concept_int_to_bytes::int_to_bytes32(self.0)
             }
         }
 
