@@ -1,5 +1,5 @@
 [package]
-name = "serde_hex"
+name = "quilt_sim_proof_of_concept_serde_hex"
 version = "0.1.0"
 # Not really -- this package was copied from https://github.com/sigp/lighthouse (with some slight
 # modifications and deletions, detailed at the top of the lib.rs file)

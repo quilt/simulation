@@ -1,7 +1,7 @@
 use crate::slot_epoch_root::EeIndex;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
-use ssz_types::VariableList;
+use quilt_sim_proof_of_concept_ssz_types::VariableList;
 // TODO: Replace this with the actual max # of bytes a ShardTransaction can include
 // Currently this is arbitrarily set to 256KB max size
 use typenum::U262144;

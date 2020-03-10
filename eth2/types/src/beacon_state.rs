@@ -5,7 +5,7 @@ use crate::shard_state::ShardState;
 use crate::slot_epoch_root::Slot;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode as DeriveDecode, Encode as DeriveEncode};
-use ssz_types::VariableList;
+use quilt_sim_proof_of_concept_ssz_types::VariableList;
 // Traits must be in scope in order to use items on the trait
 use typenum::marker_traits::Unsigned;
 

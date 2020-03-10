@@ -10,7 +10,7 @@ ewasm = "0.2.2"
 serde = { version = "1.0", features = ["derive"] }
 simulation_args = { path = "../simulation_args" }
 snafu = "0.6.0"
-ssz_types = { path = "../utils/ssz_types" }
+quilt_sim_proof_of_concept_ssz_types = { path = "../utils/ssz_types" }
 types = { path = "../types" }
 typenum = "1.11.2"
 

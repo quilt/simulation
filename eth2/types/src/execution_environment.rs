@@ -2,7 +2,7 @@ use crate::eth_spec::EthSpec;
 use crate::slot_epoch_root::Root;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
-use ssz_types::VariableList;
+use quilt_sim_proof_of_concept_ssz_types::VariableList;
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize, Encode, Decode)]
 pub struct ExecutionEnvironment<T>

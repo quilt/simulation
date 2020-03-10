@@ -7,7 +7,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 mod internal_types {
-    pub use ssz_types::{Error, VariableList};
+    pub use quilt_sim_proof_of_concept_ssz_types::{Error, VariableList};
     pub use types::eth_spec::EthSpec;
     pub use types::execution_environment::ExecutionEnvironment;
     pub use types::shard_block::ShardBlock;
