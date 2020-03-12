@@ -73,7 +73,8 @@ async fn run_block_and_verify_state(
     let ee_index = simulation_client
         .create_execution_environment(create_ee_args)
         .await?;
-    assert_eq!(ee_index, 0);
+
+    println!("created new ee, it has index: {}", ee_index);
 
     // Set up a shard transaction with the specified data
     let shard_transaction = simulation_args::ShardTransaction { data, ee_index };
@@ -87,9 +88,11 @@ async fn run_block_and_verify_state(
         shard_block,
     };
     // This creates the block and runs all the transactions inside it
-    simulation_client
+    let shard_block_index = simulation_client
         .create_shard_block(create_shard_block_args)
         .await?;
+
+    println!("create a new shard block, it has index: {}", shard_block_index);
 
     // Get back the EE state to make sure it matches the expected_post_state
     let get_ee_state_args = simulation_args::GetExecutionEnvironmentState {
@@ -103,6 +106,7 @@ async fn run_block_and_verify_state(
         ee_post_state, expected_post_state,
         "actual post state root should match expected post state root"
     );
+    println!("good news! the actual state of the ee after running the shard block transactions MATCHES the expected state");
 
     Ok(())
 }
