@@ -8,6 +8,10 @@ edition = "2018"
 
 [dependencies]
 hex = "0.4.0"
+# If desired, these packages can also be pushed to crates.io so anyone can write binaries that can send
+# requests to a running simulation_server instance, all they'd need is to require the pushed package. eg:
+# simulation_args = "0.1.0"
+# simulation_client = "0.1.0"
 simulation_args = { path = "../eth2/simulation_args" }
 simulation_client = { path = "../simulation_client" }
 structopt = "0.3.4"

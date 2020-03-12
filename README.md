@@ -171,5 +171,6 @@ cd simulation
 git checkout dev
 
 # Run the example client binary that uses simulation_client
+# Note that this will send requests to an existing test server that's running on Heroku
 cargo run --bin simulation_client_example -- --base_url="http://example-e2-simulation-server.herokuapp.com"
 ```
