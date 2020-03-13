@@ -4,6 +4,8 @@ members = [
     "eth2/utils/int_to_bytes",
     "eth2/utils/ssz_types",
     "eth2/simulation",
-    'notion-cli',
-    'notion-server',
+    "eth2/simulation_args",
+    'simulation_server',
+    'simulation_client',
+    'simulation_client_example',
 ]

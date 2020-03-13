@@ -44,6 +44,7 @@
 #[macro_use]
 mod bitfield;
 mod fixed_vector;
+use snafu::Snafu;
 mod tree_hash;
 mod variable_list;
 
@@ -57,17 +58,22 @@ pub mod length {
 }
 
 /// Returned when an item encounters an error.
-#[derive(PartialEq, Debug, Clone)]
+// Snafu added to make sure this type implements std::error::Error and std::fmt::Display
+#[derive(PartialEq, Debug, Clone, Snafu)]
 pub enum Error {
+    #[snafu(display("{} is out of bounds, max length is {}", i, len))]
     OutOfBounds {
         i: usize,
         len: usize,
     },
     /// A `BitList` does not have a set bit, therefore it's length is unknowable.
+    #[snafu(display("missing length info: a bitlist does not have a set bit, so it's length is unknowable"))]
     MissingLengthInformation,
     /// A `BitList` has excess bits set to true.
+    #[snafu(display("bitlist has excess bits set to true"))]
     ExcessBits,
     /// A `BitList` has an invalid number of bytes for a given bit length.
+    #[snafu(display("bitlist has invalid number of bytes; given: {}, expected: {}", given, expected))]
     InvalidByteCount {
         given: usize,
         expected: usize,

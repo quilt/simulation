@@ -1,3 +1,49 @@
-mod errors;
-mod simulation;
+pub mod simulation;
 mod store;
+
+use simulation_args::Error as SimulationArgsError;
+use snafu::{Backtrace, Snafu};
+use std::fmt;
+
+/// Shorthand for result types returned from the Simulation simulation.
+pub type Result<V, E = Error> = std::result::Result<V, E>;
+
+#[derive(Debug)]
+pub enum WhatBound {
+    ExecutionEnvironment,
+    ExecutionEnvironmentState,
+    ShardBlock(usize),
+    Shard,
+}
+
+impl fmt::Display for WhatBound {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            WhatBound::ExecutionEnvironment => write!(f, "execution environment"),
+            WhatBound::ExecutionEnvironmentState => write!(f, "execution environment state"),
+            WhatBound::Shard => write!(f, "shard"),
+            WhatBound::ShardBlock(shard) => write!(f, "block on shard {}", shard),
+        }
+    }
+}
+
+/// Errors arising from the simulation.
+#[derive(Debug, Snafu)]
+pub enum Error {
+    ArgsError {
+        backtrace: Backtrace,
+        source: SimulationArgsError,
+    },
+    InvalidBytes32,
+    #[snafu(display("{} exceeds max allowable length", what))]
+    MaxLengthExceeded {
+        what: String,
+    },
+    #[snafu(display("no {} exists at index: {}", what, index))]
+    OutOfBounds {
+        what: WhatBound,
+        index: usize,
+    },
+}
+
+pub use crate::simulation::Simulation;

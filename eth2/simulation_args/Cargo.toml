@@ -1,18 +1,14 @@
 [package]
-name = "simulation"
+name = "simulation_args"
 version = "0.1.0"
 authors = ["Greg Trowbridge <gjtrowbridge@gmail.com>"]
 edition = "2018"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
 base64 = "0.11.0"
-ewasm = "0.2.2"
 serde = { version = "1.0", features = ["derive"] }
-simulation_args = { path = "../simulation_args" }
 snafu = "0.6.0"
 ssz_types = { path = "../utils/ssz_types" }
 types = { path = "../types" }
-typenum = "1.11.2"
-
-[dev-dependencies]
-hex = "0.4.0"

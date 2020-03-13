@@ -2,20 +2,17 @@
 // with some modifications and deletions. Specifically, removed code that wasn't necessary for this
 // repository, updated to use explicit imports, and added additional values to the spec definition.
 use crate::beacon_state::BeaconState;
-use crate::slot_epoch_root::Epoch;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use typenum::{
-    Unsigned, U0, U1, U1024, U1099511627776, U128, U16, U16777216, U2048, U32, U4, U4096, U64,
-    U65536, U8, U8192,
-};
+use typenum::{Unsigned, U1024, U262144, U64, U65536};
 
 pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     /*
      * Unspecced values
      */
-    type ShardCount: Unsigned + Clone + Sync + Send + Debug + PartialEq;
-    type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    type MaxExecutionEnvironments: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
+    type MaxEEByteCodeSize: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
+    type MaxTransactionsPerBlock: Unsigned + Clone + Sync + Send + Debug + PartialEq + Default;
 
     //    /*
     //     * Constants
@@ -59,6 +56,13 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     //    // NOTE: we could safely instantiate this by using type-level arithmetic, but doing
     //    // so adds ~25s to the time required to type-check this crate
     //    type MaxPendingAttestations: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+
+    //    /// Must be set to `MaxEarlyDerivedSecretReveals * SlotsPerEpoch
+    //    type MaxEarlyDerivedSecretRevealsPerEpoch: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    //    // Phase 1
+    //    type EarlyDerivedSecretPenaltyMaxFutureEpochs: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+
+    type MaxShards: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 }
 
 /// Ethereum Foundation specifications.
@@ -68,8 +72,9 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
 pub struct MainnetEthSpec;
 
 impl EthSpec for MainnetEthSpec {
-    type ShardCount = U64;
     type MaxExecutionEnvironments = U65536;
+    type MaxEEByteCodeSize = U262144;
+    type MaxTransactionsPerBlock = U1024;
     //    type JustificationBitsLength = U4;
     //    type MaxValidatorsPerCommittee = U2048;
     //    type GenesisEpoch = U0;
@@ -86,6 +91,7 @@ impl EthSpec for MainnetEthSpec {
     //    type MaxDeposits = U16;
     //    type MaxVoluntaryExits = U16;
     //    type MaxPendingAttestations = U4096; // 128 max attestations * 32 slots per epoch
+    type MaxShards = U64;
 }
 
 pub type FoundationBeaconState = BeaconState<MainnetEthSpec>;

@@ -147,4 +147,30 @@ The simulation should add whatever features are necessary to be compatible with 
 
 ## Goal 2+: Keep up-to-date with the spec and add features as-necessary to support users
 
+# Usage
 
+## Local Usage
+```bash
+git clone git@github.com:quilt/simulation.git
+
+cd simulation
+git checkout dev
+
+# Run the simulation server locally
+cargo run --bin simulation_server -- --bind="127.0.0.1:8999"
+
+# In another terminal window, run the example client binary that uses simulation_client
+# (Obviously, you can write your OWN binary that uses simulation_client + simulation_args to do whatever you like)
+cargo run --bin simulation_client_example -- --base_url="http://127.0.0.1:8999"
+```
+## Remote Sever Usage
+```bash
+git clone git@github.com:quilt/simulation.git
+
+cd simulation
+git checkout dev
+
+# Run the example client binary that uses simulation_client
+# Note that this will send requests to an existing test server that's running on Heroku
+cargo run --bin simulation_client_example -- --base_url="http://example-e2-simulation-server.herokuapp.com"
+```
