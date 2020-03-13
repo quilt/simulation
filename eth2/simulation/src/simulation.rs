@@ -109,9 +109,7 @@ impl<T: EthSpec> Simulation<T> {
             let wasm_code: &[u8] = &*execution_environment.wasm_code;
             let data: &[u8] = &*transaction.data;
             let pre_state: [u8; 32] = pre_state.clone().into();
-            let mut runtime = RootRuntime::new(wasm_code, data, pre_state);
-            let post_root = runtime.execute();
-            drop(runtime);
+            let post_root = RootRuntime::new(wasm_code, data, pre_state).execute();
 
             // Update shard state with new root
             shard_state.execution_environment_states[ee_index] = Root::from(post_root);
